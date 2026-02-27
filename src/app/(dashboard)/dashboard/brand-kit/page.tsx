@@ -21,18 +21,22 @@ export default function BrandKitPage() {
   const router = useRouter();
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data } = await supabase.from('brand_kits').select('*').eq('user_id', user.id).single();
-      if (data) {
-        setBrandKit(data);
-        setIsNew(false);
-        if (data.logo_url) setLogoPreview(data.logo_url);
+      if (!cancelled) {
+        if (data) {
+          setBrandKit(data);
+          setIsNew(false);
+          if (data.logo_url) setLogoPreview(data.logo_url);
+        }
+        setLoading(false);
       }
-      setLoading(false);
     })();
+    return () => { cancelled = true; };
   }, [supabase]);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {

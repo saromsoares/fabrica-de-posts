@@ -6,6 +6,8 @@ import { Plus, Pencil, Trash2, X, Upload, AlertCircle, CheckCircle, Package } fr
 import { extractError } from '@/lib/utils';
 import type { Product, Category, Factory } from '@/types/database';
 
+const PAGE_SIZE = 20;
+
 type ProductForm = {
   name: string;
   description: string;
@@ -31,9 +33,12 @@ export default function AdminProdutosPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [totalProductCount, setTotalProductCount] = useState(0);
 
   // ─── Fetch tudo com log pra debug ───
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (targetPage: number = 0) => {
+    setLoading(true);
     try {
       // Buscar fábricas ATIVAS
       const { data: facs, error: facErr } = await supabase
@@ -58,16 +63,20 @@ export default function AdminProdutosPage() {
       }
       setCategories((cats || []) as Category[]);
 
-      // Buscar produtos com joins
-      const { data: prods, error: prodErr } = await supabase
+      // Buscar produtos com joins (paginado)
+      const from = targetPage * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      const { data: prods, count: prodCount, error: prodErr } = await supabase
         .from('products')
-        .select('id, name, description, category_id, factory_id, image_url, tags, active, created_at, updated_at, category:categories(id, name, slug, created_at), factory:factories(id, name, logo_url, active, created_at)')
-        .order('created_at', { ascending: false });
+        .select('id, name, description, category_id, factory_id, image_url, tags, active, created_at, updated_at, category:categories(id, name, slug, created_at), factory:factories(id, name, logo_url, active, created_at)', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (prodErr) {
         throw prodErr;
       }
       setProducts((prods || []) as Product[]);
+      setTotalProductCount(prodCount ?? 0);
     } catch (err) {
       console.error('fetchData error:', err);
       setError(`Erro ao carregar dados: ${extractError(err)}`);
@@ -77,8 +86,8 @@ export default function AdminProdutosPage() {
   }, [supabase]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchData(page);
+  }, [fetchData, page]);
 
   // ─── Auto-select se só tem 1 fábrica ───
   useEffect(() => {
@@ -182,7 +191,9 @@ export default function AdminProdutosPage() {
       }
 
       handleCloseForm();
-      fetchData();
+      const tp = editingId ? page : 0;
+      if (!editingId) setPage(0);
+      fetchData(tp);
     } catch (err) {
       setError(extractError(err));
     } finally {
@@ -197,7 +208,7 @@ export default function AdminProdutosPage() {
       const { error: err } = await supabase.from('products').delete().eq('id', id);
       if (err) throw new Error(err.message);
       showSuccess('Produto excluído.');
-      fetchData();
+      fetchData(page);
     } catch (err) {
       setError(`Erro ao excluir: ${extractError(err)}`);
     }
@@ -225,7 +236,7 @@ export default function AdminProdutosPage() {
         <div>
           <h1 className="font-display text-2xl font-800">Produtos</h1>
           <p className="text-dark-500 text-sm mt-0.5">
-            {factories.length} fábrica{factories.length !== 1 ? 's' : ''} · {categories.length} categoria{categories.length !== 1 ? 's' : ''} · {products.length} produto{products.length !== 1 ? 's' : ''}
+            {factories.length} fábrica{factories.length !== 1 ? 's' : ''} · {categories.length} categoria{categories.length !== 1 ? 's' : ''} · {totalProductCount} produto{totalProductCount !== 1 ? 's' : ''}
           </p>
         </div>
         <button onClick={handleOpenNew}

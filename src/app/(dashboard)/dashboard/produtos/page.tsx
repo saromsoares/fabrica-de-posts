@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { Factory, Search } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Factory as FactoryType } from '@/types/database';
 
 export default function ProdutosPage() {
@@ -72,11 +73,15 @@ export default function ProdutosPage() {
               {/* Logo da fábrica */}
               <div className="aspect-square bg-dark-800/50 flex items-center justify-center p-6 group-hover:bg-dark-800/70 transition-colors">
                 {factory.logo_url ? (
-                  <img
-                    src={factory.logo_url}
-                    alt={factory.name}
-                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-                  />
+                  <div className="relative w-full h-full">
+                    <Image
+                      src={factory.logo_url}
+                      alt={factory.name}
+                      fill
+                      className="object-contain group-hover:scale-105 transition-transform duration-300"
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    />
+                  </div>
                 ) : (
                   <Factory size={48} className="text-dark-500 group-hover:text-dark-400 transition-colors" />
                 )}

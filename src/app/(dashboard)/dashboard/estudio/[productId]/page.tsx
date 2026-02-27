@@ -278,20 +278,24 @@ export default function EstudioPage() {
 
   // Load data
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      setUserId(user.id);
+      if (!cancelled) setUserId(user.id);
       const [{ data: prod }, { data: bk }, { data: usageData }] = await Promise.all([
         supabase.from('products').select('id, name, description, category_id, factory_id, image_url, tags, active, created_at, updated_at, category:categories(id, name, slug, created_at), factory:factories(id, name, logo_url, active, created_at)').eq('id', productId).single(),
         supabase.from('brand_kits').select('*').eq('user_id', user.id).single(),
         supabase.rpc('get_usage', { p_user_id: user.id }),
       ]);
-      if (prod) setProduct(prod as Product);
-      if (bk) setBrandKit(bk as BrandKit);
-      if (usageData) setUsage(usageData as UsageInfo);
-      setLoadingData(false);
+      if (!cancelled) {
+        if (prod) setProduct(prod as Product);
+        if (bk) setBrandKit(bk as BrandKit);
+        if (usageData) setUsage(usageData as UsageInfo);
+        setLoadingData(false);
+      }
     })();
+    return () => { cancelled = true; };
   }, [supabase, productId]);
 
   const isOverLimit = usage ? usage.remaining <= 0 : false;

@@ -16,17 +16,21 @@ export default function AccountPage() {
   const supabase = createClient();
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      setEmail(user.email || '');
+      if (!cancelled) setEmail(user.email || '');
       const [{ data: prof }, { data: usageData }] = await Promise.all([
         supabase.from('profiles').select('id, full_name, role, plan, onboarding_complete, created_at').eq('id', user.id).single(),
         supabase.rpc('get_usage', { p_user_id: user.id }),
       ]);
-      if (prof) { setProfile(prof as Profile); setFullName(prof.full_name || ''); }
-      if (usageData) setUsage(usageData as UsageInfo);
+      if (!cancelled) {
+        if (prof) { setProfile(prof as Profile); setFullName(prof.full_name || ''); }
+        if (usageData) setUsage(usageData as UsageInfo);
+      }
     })();
+    return () => { cancelled = true; };
   }, [supabase]);
 
   const handleSave = async () => {

@@ -23,17 +23,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const supabase = createClient();
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      if (user && !cancelled) {
         const { data } = await supabase
           .from('profiles')
           .select('id, full_name, role, plan, onboarding_complete')
           .eq('id', user.id)
           .single();
-        if (data) setProfile(data as Profile);
+        if (data && !cancelled) setProfile(data as Profile);
       }
     })();
+    return () => { cancelled = true; };
   }, [supabase]);
 
   const handleLogout = async () => {

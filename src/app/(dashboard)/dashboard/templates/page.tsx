@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { LayoutTemplate } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Template } from '@/types/database';
 
 export default function TemplatesPage() {
@@ -13,11 +14,15 @@ export default function TemplatesPage() {
   const supabase = createClient();
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       const { data } = await supabase.from('templates').select('id, name, format, preview_url, active, created_at').eq('active', true).order('name');
-      if (data) setTemplates(data as Template[]);
-      setLoading(false);
+      if (!cancelled) {
+        if (data) setTemplates(data as Template[]);
+        setLoading(false);
+      }
     })();
+    return () => { cancelled = true; };
   }, [supabase]);
 
   const filtered = filter === 'all' ? templates : templates.filter((t) => t.format === filter);
@@ -52,9 +57,9 @@ export default function TemplatesPage() {
           {filtered.map((tpl) => (
             <Link key={tpl.id} href={`/generate?template=${tpl.id}`}
               className="group bg-dark-900/60 border border-dark-800/40 rounded-2xl overflow-hidden hover:border-brand-500/30 transition-all">
-              <div className={`${tpl.format === 'story' ? 'aspect-[9/16]' : 'aspect-square'} bg-dark-800 flex items-center justify-center overflow-hidden`}>
+              <div className={`${tpl.format === 'story' ? 'aspect-[9/16]' : 'aspect-square'} relative bg-dark-800 overflow-hidden`}>
                 {tpl.preview_url ? (
-                  <img src={tpl.preview_url} alt={tpl.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  <Image src={tpl.preview_url} alt={tpl.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw" />
                 ) : (
                   <LayoutTemplate size={32} className="text-dark-600" />
                 )}
