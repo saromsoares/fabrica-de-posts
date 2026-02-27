@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
-import { Plus, Pencil, Trash2, X, Upload, AlertCircle, Factory } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload, AlertCircle, Factory } from 'lucide-react';
+import { Modal } from '@/components/Modal';
+import { useToast } from '@/components/Toast';
 import type { Factory as FactoryType } from '@/types/database';
 
 type FactoryForm = { name: string; active: boolean };
@@ -18,8 +20,8 @@ export default function AdminFabricasPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const supabase = createClient();
+  const { addToast } = useToast();
 
   const fetchData = async () => {
     try {
@@ -30,15 +32,13 @@ export default function AdminFabricasPage() {
       if (fetchErr) throw fetchErr;
       if (data) setFactories(data as FactoryType[]);
     } catch (err) {
-      setError(`Erro ao carregar: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      addToast(`Erro ao carregar fábricas: ${err instanceof Error ? err.message : 'Erro desconhecido'}`, 'error');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => { fetchData(); }, []);
-
-  const clearMessages = () => { setError(null); setSuccess(null); };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -49,16 +49,16 @@ export default function AdminFabricasPage() {
       }
       setLogoFile(file);
       setLogoPreview(URL.createObjectURL(file));
-      clearMessages();
+      setError(null);
     }
   };
 
   const handleEdit = (factory: FactoryType) => {
-    clearMessages();
     setEditingId(factory.id);
     setForm({ name: factory.name, active: factory.active });
     setLogoPreview(factory.logo_url || null);
     setLogoFile(null);
+    setError(null);
     setShowForm(true);
   };
 
@@ -68,11 +68,11 @@ export default function AdminFabricasPage() {
     setForm(emptyForm);
     setLogoFile(null);
     setLogoPreview(null);
-    clearMessages();
+    setError(null);
   };
 
   const handleSave = async () => {
-    clearMessages();
+    setError(null);
     if (!form.name.trim()) { setError('O nome da fábrica é obrigatório.'); return; }
     setSaving(true);
 
@@ -99,16 +99,15 @@ export default function AdminFabricasPage() {
       if (editingId) {
         const { error: updateErr } = await supabase.from('factories').update(payload).eq('id', editingId);
         if (updateErr) throw new Error(updateErr.message);
-        setSuccess('Fábrica atualizada!');
+        addToast('Fábrica atualizada!', 'success');
       } else {
         const { error: insertErr } = await supabase.from('factories').insert(payload);
         if (insertErr) throw new Error(insertErr.message);
-        setSuccess('Fábrica criada!');
+        addToast('Fábrica criada!', 'success');
       }
 
       handleCloseForm();
       fetchData();
-      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro inesperado.');
     } finally {
@@ -117,16 +116,14 @@ export default function AdminFabricasPage() {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    clearMessages();
     if (!confirm(`Excluir a fábrica "${name}"? Produtos vinculados ficarão sem fábrica.`)) return;
     try {
       const { error: delErr } = await supabase.from('factories').delete().eq('id', id);
       if (delErr) throw new Error(delErr.message);
-      setSuccess('Fábrica excluída.');
-      setTimeout(() => setSuccess(null), 3000);
+      addToast('Fábrica excluída.', 'success');
       fetchData();
     } catch (err) {
-      setError(`Erro ao excluir: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      addToast(`Erro ao excluir: ${err instanceof Error ? err.message : 'Erro desconhecido'}`, 'error');
     }
   };
 
@@ -136,75 +133,57 @@ export default function AdminFabricasPage() {
     <div className="animate-fade-in-up">
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-display text-2xl font-800">Fábricas</h1>
-        <button onClick={() => { clearMessages(); setShowForm(true); setEditingId(null); setForm(emptyForm); setLogoPreview(null); }}
+        <button onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm); setLogoPreview(null); setError(null); }}
           className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-600 rounded-xl transition-all">
           <Plus size={16} /> Nova fábrica
         </button>
       </div>
 
-      {error && !showForm && (
-        <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-sm text-red-400">
-          <AlertCircle size={16} className="flex-shrink-0" /> {error}
+      {/* Modal com componente reutilizável */}
+      <Modal isOpen={showForm} onClose={handleCloseForm} title={editingId ? 'Editar fábrica' : 'Nova fábrica'}>
+        {error && (
+          <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-sm text-red-400">
+            <AlertCircle size={16} className="flex-shrink-0" /> {error}
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-500 text-dark-300 mb-1.5">Nome da Fábrica *</label>
+          <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className={inputClass} placeholder="Ex: ASX, Philips, Osram..." />
         </div>
-      )}
-      {success && (
-        <div className="mb-4 px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-sm text-emerald-400">{success}</div>
-      )}
 
-      {/* Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={handleCloseForm}>
-          <div className="bg-dark-900 border border-dark-800 rounded-t-3xl sm:rounded-2xl p-6 w-full sm:max-w-lg space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h2 className="font-display font-700 text-lg">{editingId ? 'Editar fábrica' : 'Nova fábrica'}</h2>
-              <button onClick={handleCloseForm} className="p-1 rounded-lg hover:bg-dark-800 transition-colors"><X size={20} className="text-dark-400" /></button>
+        <div>
+          <label className="block text-sm font-500 text-dark-300 mb-1.5">Logo da Fábrica</label>
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-20 rounded-xl bg-dark-800 border-2 border-dashed border-dark-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {logoPreview ? (
+                <img src={logoPreview} alt="Preview" className="w-full h-full object-contain p-2" />
+              ) : (
+                <Factory size={24} className="text-dark-500" />
+              )}
             </div>
-
-            {error && (
-              <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-sm text-red-400">
-                <AlertCircle size={16} className="flex-shrink-0" /> {error}
-              </div>
-            )}
-
             <div>
-              <label className="block text-sm font-500 text-dark-300 mb-1.5">Nome da Fábrica *</label>
-              <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className={inputClass} placeholder="Ex: ASX, Philips, Osram..." />
+              <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-dark-800 hover:bg-dark-700 rounded-xl cursor-pointer text-sm text-dark-300 transition-all">
+                <Upload size={16} /> {logoFile ? 'Trocar logo' : 'Subir logo'}
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={handleLogoChange} />
+              </label>
+              <p className="text-[11px] text-dark-500 mt-1.5">PNG, JPG, WebP ou SVG. Máx 2MB.</p>
             </div>
-
-            <div>
-              <label className="block text-sm font-500 text-dark-300 mb-1.5">Logo da Fábrica</label>
-              <div className="flex items-center gap-4">
-                <div className="w-20 h-20 rounded-xl bg-dark-800 border-2 border-dashed border-dark-600 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {logoPreview ? (
-                    <img src={logoPreview} alt="Preview" className="w-full h-full object-contain p-2" />
-                  ) : (
-                    <Factory size={24} className="text-dark-500" />
-                  )}
-                </div>
-                <div>
-                  <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-dark-800 hover:bg-dark-700 rounded-xl cursor-pointer text-sm text-dark-300 transition-all">
-                    <Upload size={16} /> {logoFile ? 'Trocar logo' : 'Subir logo'}
-                    <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={handleLogoChange} />
-                  </label>
-                  <p className="text-[11px] text-dark-500 mt-1.5">PNG, JPG, WebP ou SVG. Máx 2MB.</p>
-                </div>
-              </div>
-            </div>
-
-            <label className="flex items-center gap-2.5 text-sm text-dark-300 cursor-pointer">
-              <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })}
-                className="w-4 h-4 rounded border-dark-600 bg-dark-950 text-brand-600 focus:ring-brand-500/20" />
-              Fábrica ativa (visível para lojistas)
-            </label>
-
-            <button onClick={handleSave} disabled={saving || !form.name.trim()}
-              className="w-full py-3 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-display font-600 rounded-xl transition-all text-sm">
-              {saving ? 'Salvando...' : editingId ? 'Atualizar fábrica' : 'Criar fábrica'}
-            </button>
           </div>
         </div>
-      )}
+
+        <label className="flex items-center gap-2.5 text-sm text-dark-300 cursor-pointer">
+          <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })}
+            className="w-4 h-4 rounded border-dark-600 bg-dark-950 text-brand-600 focus:ring-brand-500/20" />
+          Fábrica ativa (visível para lojistas)
+        </label>
+
+        <button onClick={handleSave} disabled={saving || !form.name.trim()}
+          className="w-full py-3 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-display font-600 rounded-xl transition-all text-sm">
+          {saving ? 'Salvando...' : editingId ? 'Atualizar fábrica' : 'Criar fábrica'}
+        </button>
+      </Modal>
 
       {/* Lista */}
       {loading ? (
@@ -213,7 +192,7 @@ export default function AdminFabricasPage() {
         <div className="text-center py-20 bg-dark-900/40 border border-dark-800/40 rounded-2xl">
           <Factory size={48} className="mx-auto text-dark-600 mb-4" />
           <p className="text-dark-400 mb-2">Nenhuma fábrica cadastrada.</p>
-          <p className="text-dark-500 text-sm">Clique em "Nova fábrica" para começar.</p>
+          <p className="text-dark-500 text-sm">Clique em &quot;Nova fábrica&quot; para começar.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

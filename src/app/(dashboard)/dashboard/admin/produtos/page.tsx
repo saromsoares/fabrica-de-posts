@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
-import { Plus, Pencil, Trash2, X, Upload, AlertCircle, Package } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload, AlertCircle, Package } from 'lucide-react';
+import { Modal } from '@/components/Modal';
+import { useToast } from '@/components/Toast';
 import type { Product, Category, Factory } from '@/types/database';
 
 type ProductForm = { name: string; description: string; category_id: string; factory_id: string; tags: string; active: boolean };
@@ -20,8 +22,8 @@ export default function AdminProdutosPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const supabase = createClient();
+  const { addToast } = useToast();
 
   const fetchData = async () => {
     try {
@@ -35,32 +37,31 @@ export default function AdminProdutosPage() {
       if (cats) setCategories(cats as Category[]);
       if (facs) setFactories(facs as Factory[]);
     } catch (err) {
-      setError(`Erro ao carregar: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      addToast(`Erro ao carregar dados: ${err instanceof Error ? err.message : 'Erro desconhecido'}`, 'error');
     } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchData(); }, []);
-  const clearMessages = () => { setError(null); setSuccess(null); };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) { setError('Imagem muito grande. Máx 5MB.'); return; }
       if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { setError('Formato inválido.'); return; }
-      setImageFile(file); setImagePreview(URL.createObjectURL(file)); clearMessages();
+      setImageFile(file); setImagePreview(URL.createObjectURL(file)); setError(null);
     }
   };
 
   const handleEdit = (p: Product) => {
-    clearMessages(); setEditingId(p.id);
+    setEditingId(p.id);
     setForm({ name: p.name, description: p.description || '', category_id: p.category_id || '', factory_id: p.factory_id || '', tags: (p.tags || []).join(', '), active: p.active });
-    setImagePreview(p.image_url || null); setImageFile(null); setShowForm(true);
+    setImagePreview(p.image_url || null); setImageFile(null); setError(null); setShowForm(true);
   };
 
-  const handleCloseForm = () => { setShowForm(false); setEditingId(null); setForm(emptyForm); setImageFile(null); setImagePreview(null); clearMessages(); };
+  const handleCloseForm = () => { setShowForm(false); setEditingId(null); setForm(emptyForm); setImageFile(null); setImagePreview(null); setError(null); };
 
   const handleSave = async () => {
-    clearMessages();
+    setError(null);
     if (!form.name.trim()) { setError('Nome obrigatório.'); return; }
     if (!form.factory_id) { setError('Selecione uma fábrica.'); return; }
     setSaving(true);
@@ -82,12 +83,14 @@ export default function AdminProdutosPage() {
       };
       if (editingId) {
         const { error: err } = await supabase.from('products').update(payload).eq('id', editingId);
-        if (err) throw new Error(err.message); setSuccess('Produto atualizado!');
+        if (err) throw new Error(err.message);
+        addToast('Produto atualizado!', 'success');
       } else {
         const { error: err } = await supabase.from('products').insert(payload);
-        if (err) throw new Error(err.message); setSuccess('Produto criado!');
+        if (err) throw new Error(err.message);
+        addToast('Produto criado!', 'success');
       }
-      handleCloseForm(); fetchData(); setTimeout(() => setSuccess(null), 3000);
+      handleCloseForm(); fetchData();
     } catch (err) { setError(err instanceof Error ? err.message : 'Erro inesperado.'); }
     finally { setSaving(false); }
   };
@@ -97,8 +100,9 @@ export default function AdminProdutosPage() {
     try {
       const { error: err } = await supabase.from('products').delete().eq('id', id);
       if (err) throw new Error(err.message);
-      setSuccess('Excluído.'); setTimeout(() => setSuccess(null), 3000); fetchData();
-    } catch (err) { setError(`Erro: ${err instanceof Error ? err.message : 'Desconhecido'}`); }
+      addToast('Produto excluído.', 'success');
+      fetchData();
+    } catch (err) { addToast(`Erro: ${err instanceof Error ? err.message : 'Desconhecido'}`, 'error'); }
   };
 
   const inputClass = 'w-full px-4 py-2.5 bg-dark-950 border border-dark-700/50 rounded-xl text-white placeholder:text-dark-500 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20 transition-all text-sm';
@@ -107,74 +111,63 @@ export default function AdminProdutosPage() {
     <div className="animate-fade-in-up">
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-display text-2xl font-800">Produtos</h1>
-        <button onClick={() => { clearMessages(); setShowForm(true); setEditingId(null); setForm(emptyForm); setImagePreview(null); }}
+        <button onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm); setImagePreview(null); setError(null); }}
           className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-600 rounded-xl transition-all">
           <Plus size={16} /> Novo produto
         </button>
       </div>
 
-      {error && !showForm && <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-sm text-red-400"><AlertCircle size={16} /> {error}</div>}
-      {success && <div className="mb-4 px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-sm text-emerald-400">{success}</div>}
+      {/* Modal com componente reutilizável */}
+      <Modal isOpen={showForm} onClose={handleCloseForm} title={editingId ? 'Editar produto' : 'Novo produto'}>
+        {error && <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-sm text-red-400"><AlertCircle size={16} className="flex-shrink-0" /> {error}</div>}
 
-      {/* Modal Formulário */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={handleCloseForm}>
-          <div className="bg-dark-900 border border-dark-800 rounded-t-3xl sm:rounded-2xl p-6 w-full sm:max-w-lg space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h2 className="font-display font-700 text-lg">{editingId ? 'Editar' : 'Novo'} produto</h2>
-              <button onClick={handleCloseForm}><X size={20} className="text-dark-400" /></button>
+        <div><label className="block text-sm font-500 text-dark-300 mb-1.5">Nome *</label>
+          <input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className={inputClass} placeholder="Farol LED H7" /></div>
+
+        <div><label className="block text-sm font-500 text-dark-300 mb-1.5">Fábrica *</label>
+          <select value={form.factory_id} onChange={e => setForm({...form, factory_id: e.target.value})} className={`${inputClass} bg-dark-950`}>
+            <option value="">Selecione a fábrica</option>
+            {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+          {factories.length === 0 && <p className="text-[11px] text-amber-400 mt-1">Cadastre fábricas primeiro em Admin &rarr; Fábricas.</p>}
+        </div>
+
+        <div><label className="block text-sm font-500 text-dark-300 mb-1.5">Imagem</label>
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-20 rounded-xl bg-dark-800 border-2 border-dashed border-dark-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {imagePreview ? <img src={imagePreview} alt="" className="w-full h-full object-cover" /> : <Package size={24} className="text-dark-500" />}
             </div>
-            {error && <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-sm text-red-400"><AlertCircle size={16} /> {error}</div>}
-
-            <div><label className="block text-sm font-500 text-dark-300 mb-1.5">Nome *</label>
-              <input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className={inputClass} placeholder="Farol LED H7" /></div>
-
-            <div><label className="block text-sm font-500 text-dark-300 mb-1.5">Fábrica *</label>
-              <select value={form.factory_id} onChange={e => setForm({...form, factory_id: e.target.value})} className={`${inputClass} bg-dark-950`}>
-                <option value="">Selecione a fábrica</option>
-                {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-              </select>
-              {factories.length === 0 && <p className="text-[11px] text-amber-400 mt-1">Cadastre fábricas primeiro em Admin → Fábricas.</p>}
+            <div>
+              <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-dark-800 hover:bg-dark-700 rounded-xl cursor-pointer text-sm text-dark-300 transition-all">
+                <Upload size={16} /> {imageFile ? 'Trocar' : 'Subir imagem'}
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+              </label>
+              <p className="text-[11px] text-dark-500 mt-1.5">PNG, JPG, WebP. Máx 5MB.</p>
             </div>
-
-            <div><label className="block text-sm font-500 text-dark-300 mb-1.5">Imagem</label>
-              <div className="flex items-center gap-4">
-                <div className="w-20 h-20 rounded-xl bg-dark-800 border-2 border-dashed border-dark-600 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {imagePreview ? <img src={imagePreview} alt="" className="w-full h-full object-cover" /> : <Package size={24} className="text-dark-500" />}
-                </div>
-                <div>
-                  <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-dark-800 hover:bg-dark-700 rounded-xl cursor-pointer text-sm text-dark-300 transition-all">
-                    <Upload size={16} /> {imageFile ? 'Trocar' : 'Subir imagem'}
-                    <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-                  </label>
-                  <p className="text-[11px] text-dark-500 mt-1.5">PNG, JPG, WebP. Máx 5MB.</p>
-                </div>
-              </div>
-            </div>
-
-            <div><label className="block text-sm font-500 text-dark-300 mb-1.5">Categoria</label>
-              <select value={form.category_id} onChange={e => setForm({...form, category_id: e.target.value})} className={`${inputClass} bg-dark-950`}>
-                <option value="">Selecione</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select></div>
-
-            <div><label className="block text-sm font-500 text-dark-300 mb-1.5">Descrição</label>
-              <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} className={`${inputClass} resize-none`} rows={2} /></div>
-
-            <div><label className="block text-sm font-500 text-dark-300 mb-1.5">Tags (vírgula)</label>
-              <input type="text" value={form.tags} onChange={e => setForm({...form, tags: e.target.value})} className={inputClass} placeholder="led, h7" /></div>
-
-            <label className="flex items-center gap-2.5 text-sm text-dark-300 cursor-pointer">
-              <input type="checkbox" checked={form.active} onChange={e => setForm({...form, active: e.target.checked})} className="w-4 h-4 rounded" /> Ativo
-            </label>
-
-            <button onClick={handleSave} disabled={saving || !form.name.trim()}
-              className="w-full py-3 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white font-display font-600 rounded-xl transition-all text-sm">
-              {saving ? 'Salvando...' : editingId ? 'Atualizar' : 'Criar produto'}
-            </button>
           </div>
         </div>
-      )}
+
+        <div><label className="block text-sm font-500 text-dark-300 mb-1.5">Categoria</label>
+          <select value={form.category_id} onChange={e => setForm({...form, category_id: e.target.value})} className={`${inputClass} bg-dark-950`}>
+            <option value="">Selecione</option>
+            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select></div>
+
+        <div><label className="block text-sm font-500 text-dark-300 mb-1.5">Descrição</label>
+          <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} className={`${inputClass} resize-none`} rows={2} /></div>
+
+        <div><label className="block text-sm font-500 text-dark-300 mb-1.5">Tags (vírgula)</label>
+          <input type="text" value={form.tags} onChange={e => setForm({...form, tags: e.target.value})} className={inputClass} placeholder="led, h7" /></div>
+
+        <label className="flex items-center gap-2.5 text-sm text-dark-300 cursor-pointer">
+          <input type="checkbox" checked={form.active} onChange={e => setForm({...form, active: e.target.checked})} className="w-4 h-4 rounded" /> Ativo
+        </label>
+
+        <button onClick={handleSave} disabled={saving || !form.name.trim()}
+          className="w-full py-3 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white font-display font-600 rounded-xl transition-all text-sm">
+          {saving ? 'Salvando...' : editingId ? 'Atualizar' : 'Criar produto'}
+        </button>
+      </Modal>
 
       {/* Lista */}
       {loading ? (
