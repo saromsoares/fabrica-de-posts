@@ -219,14 +219,14 @@ export default function AdminProdutosPage() {
 
   return (
     <div className="animate-fade-in-up">
-      {/* ─── Toast global (sempre no topo, z-[99999]) ─── */}
+      {/* ─── Toast global (sempre no topo, z-[60]) ─── */}
       {success && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[99999] px-5 py-3 bg-emerald-600 text-white text-sm font-500 rounded-xl shadow-2xl flex items-center gap-2 animate-fade-in-up">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 bg-emerald-600 text-white text-sm font-500 rounded-xl shadow-2xl flex items-center gap-2 animate-fade-in-up">
           <CheckCircle size={16} /> {success}
         </div>
       )}
       {error && !showForm && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[99999] px-5 py-3 bg-red-600 text-white text-sm font-500 rounded-xl shadow-2xl flex items-center gap-2 max-w-md animate-fade-in-up">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 bg-red-600 text-white text-sm font-500 rounded-xl shadow-2xl flex items-center gap-2 max-w-md animate-fade-in-up">
           <AlertCircle size={16} className="flex-shrink-0" /> {error}
         </div>
       )}
@@ -248,11 +248,11 @@ export default function AdminProdutosPage() {
       {/* ─── Modal (centralizado + scroll interno) ─── */}
       {showForm && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
           onClick={handleCloseForm}
         >
           <div
-            className="bg-dark-900 border border-dark-800 rounded-2xl p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto"
+            className="bg-dark-900 border border-dark-800 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
             {/* Cabeçalho */}

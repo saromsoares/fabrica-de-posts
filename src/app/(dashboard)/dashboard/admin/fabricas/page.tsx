@@ -137,7 +137,7 @@ export default function AdminFabricasPage() {
     <div className="animate-fade-in-up">
       {/* Toast global */}
       {success && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[99999] px-5 py-3 bg-emerald-600 text-white text-sm font-500 rounded-xl shadow-2xl flex items-center gap-2 animate-fade-in-up">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 bg-emerald-600 text-white text-sm font-500 rounded-xl shadow-2xl flex items-center gap-2 animate-fade-in-up">
           ✅ {success}
         </div>
       )}
@@ -161,8 +161,8 @@ export default function AdminFabricasPage() {
 
       {/* Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4" onClick={handleCloseForm}>
-          <div className="bg-dark-900 border border-dark-800 rounded-2xl p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={handleCloseForm}>
+          <div className="bg-dark-900 border border-dark-800 rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h2 className="font-display font-700 text-lg">{editingId ? 'Editar fábrica' : 'Nova fábrica'}</h2>
               <button onClick={handleCloseForm} className="p-1 rounded-lg hover:bg-dark-800 transition-colors"><X size={20} className="text-dark-400" /></button>

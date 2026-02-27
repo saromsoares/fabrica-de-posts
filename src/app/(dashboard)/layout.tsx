@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
-import { Sparkles, LayoutDashboard, Palette, Package, LayoutTemplate, Clock, User, LogOut, Menu, X, Settings } from 'lucide-react';
+import { Sparkles, LayoutDashboard, Palette, Package, Clock, User, LogOut, Menu, X, Settings } from 'lucide-react';
 import type { Profile } from '@/types/database';
 
 const navItems = [
@@ -92,10 +92,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link href="/dashboard/admin/categorias" onClick={() => setSidebarOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-500 transition-all ${pathname.startsWith('/dashboard/admin/categorias') ? 'bg-amber-500/15 text-amber-400' : 'text-dark-400 hover:text-white hover:bg-dark-800/60'}`}>
                 <span className="text-base">🏷️</span> Categorias
-              </Link>
-              <Link href="/dashboard/admin/templates" onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-500 transition-all ${pathname.startsWith('/dashboard/admin/templates') ? 'bg-amber-500/15 text-amber-400' : 'text-dark-400 hover:text-white hover:bg-dark-800/60'}`}>
-                <LayoutTemplate size={18} /> Templates
               </Link>
               <Link href="/dashboard/admin/clients" onClick={() => setSidebarOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-500 transition-all ${pathname.startsWith('/dashboard/admin/clients') ? 'bg-amber-500/15 text-amber-400' : 'text-dark-400 hover:text-white hover:bg-dark-800/60'}`}>

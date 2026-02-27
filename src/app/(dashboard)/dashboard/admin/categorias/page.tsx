@@ -88,7 +88,7 @@ export default function AdminCategoriasPage() {
     <div className="animate-fade-in-up">
       {/* Toast */}
       {success && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[99999] px-5 py-3 bg-emerald-600 text-white text-sm font-500 rounded-xl shadow-2xl flex items-center gap-2 animate-fade-in-up">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 bg-emerald-600 text-white text-sm font-500 rounded-xl shadow-2xl flex items-center gap-2 animate-fade-in-up">
           <CheckCircle size={16} /> {success}
         </div>
       )}
@@ -115,8 +115,8 @@ export default function AdminCategoriasPage() {
 
       {/* Modal rápido de nova categoria */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-          <div className="bg-dark-900 border border-dark-800 rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowForm(false)}>
+          <div className="bg-dark-900 border border-dark-800 rounded-2xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display font-700 text-lg">Nova categoria</h2>
               <button onClick={() => setShowForm(false)} className="p-1 rounded-lg hover:bg-dark-800">
