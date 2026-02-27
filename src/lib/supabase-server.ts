@@ -9,9 +9,9 @@ export async function createClient() {
     {
       cookies: {
         getAll() { return cookieStore.getAll(); },
-        setAll(cookiesToSet: any) {
+        setAll(cookiesToSet: Array<{ name: string; value: string; options: object }>) {
           try {
-            cookiesToSet.forEach(({ name, value, options }: { name: string; value: string; options: any }) => cookieStore.set(name, value, options));
+            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
           } catch { /* Server Component */ }
         },
       },

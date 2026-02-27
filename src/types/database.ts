@@ -72,10 +72,6 @@ export type Generation = {
   template_id: string | null;
   image_url: string | null;
   caption: string | null;
-  title: string | null;
-  platform: string;
-  status: string;
-  tone: string;
   fields_data: GenerationFields;
   format: 'feed' | 'story';
   created_at: string;

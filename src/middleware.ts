@@ -10,10 +10,10 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         getAll() { return request.cookies.getAll(); },
-        setAll(cookiesToSet: any) {
-          cookiesToSet.forEach(({ name, value }: { name: string; value: string }) => request.cookies.set(name, value));
+        setAll(cookiesToSet: Array<{ name: string; value: string; options: object }>) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }: { name: string; value: string; options: any }) => supabaseResponse.cookies.set(name, value, options));
+          cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options));
         },
       },
     }
@@ -22,21 +22,21 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
 
-  // Rotas públicas: landing, login, assets
-  const isPublic = path === '/' || path.startsWith('/login');
+  // Rotas públicas
+  const isPublic = path === '/' || path.startsWith('/login') || path.startsWith('/auth/callback');
 
-  // Se não autenticado e rota protegida → login
+  // Não autenticado + rota protegida → login
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Se autenticado e na landing/login → dashboard
-  if (user && isPublic) {
+  // Autenticado na landing/login → dashboard
+  if (user && (path === '/' || path.startsWith('/login'))) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   // Proteger rotas admin
-  if (user && path.startsWith('/admin')) {
+  if (user && path.startsWith('/dashboard/admin')) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
@@ -48,16 +48,16 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Verificar onboarding (forçar brand-kit se não completou)
-  if (user && !path.startsWith('/brand-kit') && !path.startsWith('/admin') && !path.startsWith('/account')) {
+  // Onboarding: forçar Brand Kit se não completou
+  if (user && path.startsWith('/dashboard') && !path.startsWith('/dashboard/brand-kit') && !path.startsWith('/dashboard/admin') && !path.startsWith('/dashboard/conta')) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('onboarding_complete')
       .eq('id', user.id)
       .single();
 
-    if (profile && !profile.onboarding_complete && path !== '/brand-kit') {
-      return NextResponse.redirect(new URL('/brand-kit', request.url));
+    if (profile && !profile.onboarding_complete) {
+      return NextResponse.redirect(new URL('/dashboard/brand-kit', request.url));
     }
   }
 
