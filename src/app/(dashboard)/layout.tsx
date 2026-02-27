@@ -50,7 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen flex">
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
-      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-dark-950 border-r border-dark-800/40 flex flex-col transition-transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed top-0 left-0 h-screen z-50 w-64 bg-dark-950 border-r border-dark-800/40 flex flex-col transition-transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="h-16 px-6 flex items-center justify-between border-b border-dark-800/40">
           <Link href="/dashboard" className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center">
@@ -113,7 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen lg:ml-64">
         <header className="lg:hidden sticky top-0 z-30 h-14 bg-dark-950/80 backdrop-blur-xl border-b border-dark-800/40 flex items-center px-4">
           <button onClick={() => setSidebarOpen(true)} className="text-dark-300"><Menu size={22} /></button>
           <span className="ml-3 font-display font-700 text-sm">Fábrica de <span className="text-brand-400">Posts</span></span>

@@ -15,8 +15,8 @@ const defaultConfig: TemplateConfig = {
   background: { type: 'gradient', value: 'linear-gradient(135deg, #1a1b2e, #0f1020)' },
 };
 
-type TemplateForm = { name: string; format: 'feed' | 'story'; config_json: string; active: boolean };
-const emptyForm: TemplateForm = { name: '', format: 'feed', config_json: JSON.stringify(defaultConfig, null, 2), active: true };
+type TemplateForm = { name: string; format: 'feed' | 'story'; active: boolean };
+const emptyForm: TemplateForm = { name: '', format: 'feed', active: true };
 
 export default function AdminTemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -38,7 +38,7 @@ export default function AdminTemplatesPage() {
 
   const handleEdit = (tpl: Template) => {
     setEditingId(tpl.id);
-    setForm({ name: tpl.name, format: tpl.format, config_json: JSON.stringify(tpl.config_json, null, 2), active: tpl.active });
+    setForm({ name: tpl.name, format: tpl.format, active: tpl.active });
     setShowForm(true);
   };
 
@@ -55,13 +55,10 @@ export default function AdminTemplatesPage() {
       }
     }
 
-    let configJson;
-    try { configJson = JSON.parse(form.config_json); } catch { configJson = defaultConfig; }
-
     const payload = {
       name: form.name,
       format: form.format,
-      config_json: configJson,
+      config_json: defaultConfig,
       active: form.active,
       ...(previewUrl && { preview_url: previewUrl }),
       updated_at: new Date().toISOString(),
@@ -97,8 +94,8 @@ export default function AdminTemplatesPage() {
 
       {/* Form modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-          <div className="bg-dark-900 border border-dark-800 rounded-2xl p-6 w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowForm(false)}>
+          <div className="bg-dark-900 border border-dark-800 rounded-2xl p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h2 className="font-display font-700">{editingId ? 'Editar' : 'Novo'} template</h2>
               <button onClick={() => setShowForm(false)}><X size={20} className="text-dark-400" /></button>
@@ -126,11 +123,7 @@ export default function AdminTemplatesPage() {
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => setPreviewFile(e.target.files?.[0] || null)} />
               </label>
             </div>
-            <div>
-              <label className="block text-sm text-dark-300 mb-1">Config JSON</label>
-              <textarea value={form.config_json} onChange={(e) => setForm({ ...form, config_json: e.target.value })}
-                className={`${inputClass} font-mono text-xs resize-none`} rows={12} />
-            </div>
+
             <label className="flex items-center gap-2 text-sm text-dark-300">
               <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} /> Ativo
             </label>
