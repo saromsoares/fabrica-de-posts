@@ -74,26 +74,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
 
-          {profile?.role === 'admin' && (
-            <>
-              <div className="h-px bg-dark-800/40 my-3" />
-              <div className="px-3 mb-2">
-                <span className="text-[11px] font-600 text-dark-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <Shield size={12} /> Admin
-                </span>
-              </div>
-              {adminItems.map((item) => {
-                const active = pathname === item.href || pathname.startsWith(item.href + '/');
-                return (
-                  <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-500 transition-all ${active ? 'bg-amber-500/15 text-amber-400' : 'text-dark-400 hover:text-white hover:bg-dark-800/60'}`}>
-                    <item.icon size={18} />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </>
-          )}
+          {/* Separador + Área Admin (sem bloqueio de role para MVP) */}
+          <div className="h-px bg-dark-800/40 my-3" />
+          <div className="px-3 mb-2">
+            <span className="text-[11px] font-700 text-amber-400 uppercase tracking-wider">
+              🔧 Área da Fábrica (Admin)
+            </span>
+          </div>
+          <Link href="/dashboard/admin/fabricas" onClick={() => setSidebarOpen(false)}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-500 transition-all ${pathname.startsWith('/dashboard/admin/fabricas') ? 'bg-amber-500/15 text-amber-400' : 'text-dark-400 hover:text-white hover:bg-dark-800/60'}`}>
+            <span className="text-base">🏭</span> Cadastrar Fábrica
+          </Link>
+          <Link href="/dashboard/admin/produtos" onClick={() => setSidebarOpen(false)}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-500 transition-all ${pathname.startsWith('/dashboard/admin/produtos') ? 'bg-amber-500/15 text-amber-400' : 'text-dark-400 hover:text-white hover:bg-dark-800/60'}`}>
+            <span className="text-base">📦</span> Cadastrar Produto
+          </Link>
+          <Link href="/dashboard/admin/templates" onClick={() => setSidebarOpen(false)}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-500 transition-all ${pathname.startsWith('/dashboard/admin/templates') ? 'bg-amber-500/15 text-amber-400' : 'text-dark-400 hover:text-white hover:bg-dark-800/60'}`}>
+            <LayoutTemplate size={18} /> Templates
+          </Link>
+          <Link href="/dashboard/admin/clients" onClick={() => setSidebarOpen(false)}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-500 transition-all ${pathname.startsWith('/dashboard/admin/clients') ? 'bg-amber-500/15 text-amber-400' : 'text-dark-400 hover:text-white hover:bg-dark-800/60'}`}>
+            <Settings size={18} /> Clientes
+          </Link>
         </nav>
 
         <div className="p-3 border-t border-dark-800/40">
