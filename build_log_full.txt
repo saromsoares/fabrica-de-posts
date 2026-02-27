@@ -1,0 +1,46 @@
+
+> fabrica-de-posts@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.12
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (133kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+ ✓ Compiled successfully in 13.6s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/15) ...
+   Generating static pages (3/15) 
+   Generating static pages (7/15) 
+   Generating static pages (11/15) 
+ ✓ Generating static pages (15/15)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                      162 B         106 kB
+├ ○ /_not-found                            994 B         103 kB
+├ ○ /dashboard                           2.39 kB         162 kB
+├ ○ /dashboard/admin                     1.56 kB         158 kB
+├ ○ /dashboard/admin/clients             1.64 kB         158 kB
+├ ○ /dashboard/admin/produtos            4.52 kB         161 kB
+├ ○ /dashboard/admin/templates           3.09 kB         160 kB
+├ ○ /dashboard/brand-kit                 2.78 kB         159 kB
+├ ○ /dashboard/conta                     1.97 kB         158 kB
+├ ƒ /dashboard/estudio/[productId]       11.2 kB         171 kB
+├ ○ /dashboard/historico                 2.27 kB         159 kB
+├ ○ /dashboard/produtos                  2.19 kB         162 kB
+├ ○ /dashboard/templates                 1.58 kB         161 kB
+└ ○ /login                               2.12 kB         159 kB
++ First Load JS shared by all             102 kB
+  ├ chunks/255-ebd51be49873d76c.js         46 kB
+  ├ chunks/4bd1b696-c023c6e3521b1417.js  54.2 kB
+  └ other shared chunks (total)          1.92 kB
+
+
+ƒ Middleware                             81.9 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
