@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { Plus, Pencil, Trash2, X, Upload, AlertCircle, Factory } from 'lucide-react';
+import { extractError } from '@/lib/utils';
 import type { Factory as FactoryType } from '@/types/database';
 
 type FactoryForm = { name: string; active: boolean };
@@ -30,7 +31,7 @@ export default function AdminFabricasPage() {
       if (fetchErr) throw fetchErr;
       if (data) setFactories(data as FactoryType[]);
     } catch (err) {
-      setError(`Erro ao carregar: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      setError(`Erro ao carregar: ${extractError(err)}`);
     } finally {
       setLoading(false);
     }
@@ -110,7 +111,7 @@ export default function AdminFabricasPage() {
       fetchData();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro inesperado.');
+      setError(extractError(err));
     } finally {
       setSaving(false);
     }
@@ -126,7 +127,7 @@ export default function AdminFabricasPage() {
       setTimeout(() => setSuccess(null), 3000);
       fetchData();
     } catch (err) {
-      setError(`Erro ao excluir: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      setError(`Erro ao excluir: ${extractError(err)}`);
     }
   };
 

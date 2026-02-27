@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { Plus, Trash2, X, AlertCircle, CheckCircle, Tag } from 'lucide-react';
+import { extractError } from '@/lib/utils';
 import type { Category } from '@/types/database';
 
 export default function AdminCategoriasPage() {
@@ -25,7 +26,7 @@ export default function AdminCategoriasPage() {
       if (err) throw err;
       setCategories((data || []) as Category[]);
     } catch (err) {
-      setError(`Erro ao carregar: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`Erro ao carregar: ${extractError(err)}`);
     } finally {
       setLoading(false);
     }
@@ -62,7 +63,7 @@ export default function AdminCategoriasPage() {
       showSuccessMsg(`Categoria "${name}" criada!`);
       fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao criar categoria.');
+      setError(extractError(err));
     } finally {
       setSaving(false);
     }
@@ -77,7 +78,7 @@ export default function AdminCategoriasPage() {
       showSuccessMsg(`Categoria "${name}" excluída.`);
       fetchData();
     } catch (err) {
-      setError(`Erro ao excluir: ${err instanceof Error ? err.message : 'Desconhecido'}`);
+      setError(`Erro ao excluir: ${extractError(err)}`);
     }
   };
 

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { Plus, Pencil, Trash2, X, Upload, AlertCircle, CheckCircle, Package } from 'lucide-react';
+import { extractError } from '@/lib/utils';
 import type { Product, Category, Factory } from '@/types/database';
 
 type ProductForm = {
@@ -72,7 +73,8 @@ export default function AdminProdutosPage() {
       }
       setProducts((prods || []) as Product[]);
     } catch (err) {
-      setError(`Erro ao carregar dados: ${err instanceof Error ? err.message : String(err)}`);
+      console.error('fetchData error:', err);
+      setError(`Erro ao carregar dados: ${extractError(err)}`);
     } finally {
       setLoading(false);
     }
@@ -186,7 +188,7 @@ export default function AdminProdutosPage() {
       handleCloseForm();
       fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro inesperado ao salvar.');
+      setError(extractError(err));
     } finally {
       setSaving(false);
     }
@@ -201,7 +203,7 @@ export default function AdminProdutosPage() {
       showSuccess('Produto excluído.');
       fetchData();
     } catch (err) {
-      setError(`Erro ao excluir: ${err instanceof Error ? err.message : 'Desconhecido'}`);
+      setError(`Erro ao excluir: ${extractError(err)}`);
     }
   };
 
