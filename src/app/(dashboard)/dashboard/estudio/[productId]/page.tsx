@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { toPng } from 'html-to-image';
-import { Download, Copy, Check, Zap, ChevronRight, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { Download, Copy, Check, Zap, ChevronRight, AlertTriangle, ArrowLeft, Sparkles, RefreshCw } from 'lucide-react';
 import { generateCaption, CAPTION_STYLES } from '@/lib/captions';
 import Link from 'next/link';
 import type { Product, Template, BrandKit, Category, Factory, CaptionStyle, UsageInfo, GenerationFields } from '@/types/database';
@@ -30,6 +30,9 @@ export default function EstudioPage() {
   const [generating, setGenerating] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [caption, setCaption] = useState<{ short: string; medium: string } | null>(null);
+  const [aiCaption, setAiCaption] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [copiedCaption, setCopiedCaption] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [loadingData, setLoadingData] = useState(true);
@@ -117,7 +120,7 @@ export default function EstudioPage() {
         product_id: product?.id,
         template_id: selectedTemplate?.id,
         image_url: imageUrl,
-        caption: caption?.medium || '',
+        caption: aiCaption || caption?.medium || '',
         fields_data: fields,
         format: selectedTemplate?.format || 'feed',
       });
@@ -146,6 +149,43 @@ export default function EstudioPage() {
     navigator.clipboard.writeText(text);
     setCopiedCaption(true);
     setTimeout(() => setCopiedCaption(false), 2000);
+  };
+
+  // Gerar legenda com IA (OpenAI)
+  const handleGenerateAiCaption = async () => {
+    if (!product || !brandKit) return;
+    setAiLoading(true);
+    setAiError(null);
+    setAiCaption(null);
+
+    try {
+      const res = await fetch('/api/generate-copy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: product.name,
+          price: fields.price || undefined,
+          condition: fields.condition || undefined,
+          whatsapp: brandKit.whatsapp || undefined,
+          instagram: brandKit.instagram_handle || undefined,
+          storeName: brandKit.store_name || undefined,
+          factoryName: (product.factory as Factory)?.name || undefined,
+          objective: captionStyle,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro ao gerar legenda.');
+      }
+
+      setAiCaption(data.caption);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'Erro inesperado ao gerar legenda.');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const inputClass = 'w-full px-4 py-3 bg-dark-950 border border-dark-700/50 rounded-xl text-white placeholder:text-dark-500 focus:outline-none focus:border-brand-500/50 transition-all text-sm';
@@ -340,26 +380,74 @@ export default function EstudioPage() {
                 <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-6 space-y-4">
                   <h3 className="font-display font-600">Legendas prontas</h3>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-dark-400">Legenda curta</span>
-                      <button onClick={() => handleCopyCaption(caption.short)}
-                        className="text-xs text-dark-400 hover:text-white flex items-center gap-1 transition-colors">
-                        {copiedCaption ? <Check size={12} /> : <Copy size={12} />} Copiar
-                      </button>
+                  {/* Botão Gerar com IA */}
+                  <div className="bg-gradient-to-r from-purple-500/10 to-brand-500/10 border border-purple-500/20 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles size={16} className="text-purple-400" />
+                      <span className="text-sm font-600 text-purple-300">Legenda com IA</span>
                     </div>
-                    <div className="p-3 bg-dark-950 rounded-xl text-sm text-dark-200 whitespace-pre-wrap">{caption.short}</div>
+                    <p className="text-xs text-dark-400 mb-3">Gere uma legenda persuasiva criada por inteligência artificial com base nos dados do produto.</p>
+                    <button
+                      onClick={handleGenerateAiCaption}
+                      disabled={aiLoading}
+                      className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-600 rounded-xl transition-all flex items-center justify-center gap-2"
+                    >
+                      {aiLoading ? (
+                        <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Escrevendo com IA...</>
+                      ) : aiCaption ? (
+                        <><RefreshCw size={14} /> Gerar outra legenda</>
+                      ) : (
+                        <><Sparkles size={14} /> Gerar Legenda com IA</>
+                      )}
+                    </button>
                   </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-dark-400">Legenda média</span>
-                      <button onClick={() => handleCopyCaption(caption.medium)}
-                        className="text-xs text-dark-400 hover:text-white flex items-center gap-1 transition-colors">
-                        <Copy size={12} /> Copiar
-                      </button>
+                  {/* Erro da IA */}
+                  {aiError && (
+                    <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400">
+                      {aiError}
                     </div>
-                    <div className="p-3 bg-dark-950 rounded-xl text-sm text-dark-200 whitespace-pre-wrap">{caption.medium}</div>
+                  )}
+
+                  {/* Resultado da IA */}
+                  {aiCaption && (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-purple-400 flex items-center gap-1"><Sparkles size={10} /> Legenda IA</span>
+                        <button onClick={() => handleCopyCaption(aiCaption)}
+                          className="text-xs text-dark-400 hover:text-white flex items-center gap-1 transition-colors">
+                          {copiedCaption ? <Check size={12} /> : <Copy size={12} />} Copiar
+                        </button>
+                      </div>
+                      <div className="p-3 bg-purple-500/5 border border-purple-500/10 rounded-xl text-sm text-dark-200 whitespace-pre-wrap">{aiCaption}</div>
+                    </div>
+                  )}
+
+                  {/* Legendas automáticas (fallback) */}
+                  <div className="pt-2 border-t border-dark-800/30">
+                    <p className="text-[11px] text-dark-500 mb-3">Ou use uma legenda automática:</p>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-dark-400">Legenda curta</span>
+                        <button onClick={() => handleCopyCaption(caption.short)}
+                          className="text-xs text-dark-400 hover:text-white flex items-center gap-1 transition-colors">
+                          {copiedCaption ? <Check size={12} /> : <Copy size={12} />} Copiar
+                        </button>
+                      </div>
+                      <div className="p-3 bg-dark-950 rounded-xl text-sm text-dark-200 whitespace-pre-wrap">{caption.short}</div>
+                    </div>
+
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-dark-400">Legenda média</span>
+                        <button onClick={() => handleCopyCaption(caption.medium)}
+                          className="text-xs text-dark-400 hover:text-white flex items-center gap-1 transition-colors">
+                          <Copy size={12} /> Copiar
+                        </button>
+                      </div>
+                      <div className="p-3 bg-dark-950 rounded-xl text-sm text-dark-200 whitespace-pre-wrap">{caption.medium}</div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -369,7 +457,7 @@ export default function EstudioPage() {
                   className="flex-1 py-3 bg-dark-800 hover:bg-dark-700 text-white font-600 rounded-xl transition-all text-center text-sm">
                   ← Voltar aos produtos
                 </Link>
-                <button onClick={() => { setStep(1); setSelectedTemplate(null); setGeneratedImageUrl(null); setCaption(null); setFields({ price: '', condition: '', cta: 'Garanta o seu!' }); }}
+                <button onClick={() => { setStep(1); setSelectedTemplate(null); setGeneratedImageUrl(null); setCaption(null); setAiCaption(null); setAiError(null); setFields({ price: '', condition: '', cta: 'Garanta o seu!' }); }}
                   className="flex-1 py-3 bg-dark-800 hover:bg-dark-700 text-white font-600 rounded-xl transition-all text-sm">
                   Criar outra arte
                 </button>

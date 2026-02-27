@@ -4,16 +4,22 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
-import { Sparkles, LayoutDashboard, Palette, Package, LayoutTemplate, Clock, User, LogOut, Shield, Menu, X } from 'lucide-react';
+import { Sparkles, LayoutDashboard, Palette, Package, LayoutTemplate, Clock, User, LogOut, Shield, Menu, X, Factory, Settings } from 'lucide-react';
 import type { Profile } from '@/types/database';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/dashboard/brand-kit', icon: Palette, label: 'Brand Kit' },
-  { href: '/dashboard/produtos', icon: Package, label: 'Produtos' },
-  { href: '/dashboard/templates', icon: LayoutTemplate, label: 'Templates' },
+  { href: '/dashboard/produtos', icon: Package, label: 'Catálogo' },
   { href: '/dashboard/historico', icon: Clock, label: 'Histórico' },
   { href: '/dashboard/conta', icon: User, label: 'Conta' },
+];
+
+const adminItems = [
+  { href: '/dashboard/admin/fabricas', icon: Factory, label: 'Fábricas' },
+  { href: '/dashboard/admin/produtos', icon: Package, label: 'Produtos' },
+  { href: '/dashboard/admin/templates', icon: LayoutTemplate, label: 'Templates' },
+  { href: '/dashboard/admin/clients', icon: Settings, label: 'Clientes' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -71,10 +77,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {profile?.role === 'admin' && (
             <>
               <div className="h-px bg-dark-800/40 my-3" />
-              <Link href="/dashboard/admin" onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-500 transition-all ${pathname.startsWith('/dashboard/admin') ? 'bg-brand-600/15 text-brand-400' : 'text-dark-400 hover:text-white hover:bg-dark-800/60'}`}>
-                <Shield size={18} /> Admin
-              </Link>
+              <div className="px-3 mb-2">
+                <span className="text-[11px] font-600 text-dark-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <Shield size={12} /> Admin
+                </span>
+              </div>
+              {adminItems.map((item) => {
+                const active = pathname === item.href || pathname.startsWith(item.href + '/');
+                return (
+                  <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-500 transition-all ${active ? 'bg-amber-500/15 text-amber-400' : 'text-dark-400 hover:text-white hover:bg-dark-800/60'}`}>
+                    <item.icon size={18} />
+                    {item.label}
+                  </Link>
+                );
+              })}
             </>
           )}
         </nav>
