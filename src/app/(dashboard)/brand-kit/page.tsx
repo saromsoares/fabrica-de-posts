@@ -1,0 +1,188 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase-browser';
+import { useRouter } from 'next/navigation';
+import { Upload, Check, Palette } from 'lucide-react';
+import type { BrandKit } from '@/types/database';
+
+export default function BrandKitPage() {
+  const [brandKit, setBrandKit] = useState<Partial<BrandKit>>({
+    primary_color: '#000000', secondary_color: '#FFFFFF',
+    store_name: '', instagram_handle: '', whatsapp: '',
+  });
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [isNew, setIsNew] = useState(true);
+  const supabase = createClient();
+  const router = useRouter();
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('brand_kits').select('*').eq('user_id', user.id).single();
+      if (data) {
+        setBrandKit(data);
+        setIsNew(false);
+        if (data.logo_url) setLogoPreview(data.logo_url);
+      }
+      setLoading(false);
+    })();
+  }, [supabase]);
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLogoFile(file);
+      setLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      let logoUrl = brandKit.logo_url;
+
+      // Upload logo se mudou
+      if (logoFile) {
+        const ext = logoFile.name.split('.').pop();
+        const path = `${user.id}/logo.${ext}`;
+        const { error: uploadErr } = await supabase.storage.from('brand-kits').upload(path, logoFile, { upsert: true });
+        if (!uploadErr) {
+          const { data: urlData } = supabase.storage.from('brand-kits').getPublicUrl(path);
+          logoUrl = urlData.publicUrl;
+        }
+      }
+
+      const payload = {
+        user_id: user.id,
+        logo_url: logoUrl,
+        primary_color: brandKit.primary_color,
+        secondary_color: brandKit.secondary_color,
+        store_name: brandKit.store_name,
+        instagram_handle: brandKit.instagram_handle,
+        whatsapp: brandKit.whatsapp,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (isNew) {
+        await supabase.from('brand_kits').insert(payload);
+      } else {
+        await supabase.from('brand_kits').update(payload).eq('user_id', user.id);
+      }
+
+      // Marca onboarding como completo
+      await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', user.id);
+
+      setSaved(true);
+      setTimeout(() => {
+        setSaved(false);
+        if (isNew) router.push('/dashboard');
+      }, 1500);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputClass = 'w-full px-4 py-3 bg-dark-950 border border-dark-700/50 rounded-xl text-white placeholder:text-dark-500 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20 transition-all';
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" /></div>;
+  }
+
+  return (
+    <div className="max-w-2xl animate-fade-in-up">
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <Palette size={28} className="text-brand-400" />
+          <h1 className="font-display text-3xl font-800 tracking-tight">Brand Kit</h1>
+        </div>
+        <p className="text-dark-400">{isNew ? 'Configure sua marca para começar a gerar artes.' : 'Atualize os dados da sua marca.'}</p>
+      </div>
+
+      <div className="bg-dark-900/60 border border-dark-800/40 rounded-3xl p-6 md:p-8 space-y-6">
+        {/* Logo */}
+        <div>
+          <label className="block text-sm font-500 text-dark-300 mb-3">Logo da loja</label>
+          <div className="flex items-center gap-5">
+            <div className="w-20 h-20 rounded-2xl bg-dark-800 border-2 border-dashed border-dark-600 flex items-center justify-center overflow-hidden">
+              {logoPreview ? (
+                <img src={logoPreview} alt="Logo" className="w-full h-full object-contain p-1" />
+              ) : (
+                <Upload size={24} className="text-dark-500" />
+              )}
+            </div>
+            <div>
+              <label className="inline-block px-4 py-2 bg-dark-800 hover:bg-dark-700 text-sm text-dark-200 rounded-xl cursor-pointer transition-all">
+                {logoPreview ? 'Trocar logo' : 'Subir logo'}
+                <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+              </label>
+              <p className="text-xs text-dark-500 mt-2">PNG, JPG ou SVG. Máx 2MB.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Cores */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-500 text-dark-300 mb-2">Cor primária</label>
+            <div className="flex items-center gap-3">
+              <input type="color" value={brandKit.primary_color || '#000000'}
+                onChange={(e) => setBrandKit({ ...brandKit, primary_color: e.target.value })}
+                className="w-12 h-12 rounded-xl border border-dark-700 cursor-pointer bg-transparent" />
+              <input type="text" value={brandKit.primary_color || ''} onChange={(e) => setBrandKit({ ...brandKit, primary_color: e.target.value })}
+                className={inputClass} placeholder="#000000" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-500 text-dark-300 mb-2">Cor secundária</label>
+            <div className="flex items-center gap-3">
+              <input type="color" value={brandKit.secondary_color || '#FFFFFF'}
+                onChange={(e) => setBrandKit({ ...brandKit, secondary_color: e.target.value })}
+                className="w-12 h-12 rounded-xl border border-dark-700 cursor-pointer bg-transparent" />
+              <input type="text" value={brandKit.secondary_color || ''} onChange={(e) => setBrandKit({ ...brandKit, secondary_color: e.target.value })}
+                className={inputClass} placeholder="#FFFFFF" />
+            </div>
+          </div>
+        </div>
+
+        {/* Nome da loja */}
+        <div>
+          <label className="block text-sm font-500 text-dark-300 mb-2">Nome da loja (opcional)</label>
+          <input type="text" value={brandKit.store_name || ''} onChange={(e) => setBrandKit({ ...brandKit, store_name: e.target.value })}
+            className={inputClass} placeholder="Minha Loja" />
+        </div>
+
+        {/* Instagram */}
+        <div>
+          <label className="block text-sm font-500 text-dark-300 mb-2">@Instagram</label>
+          <input type="text" value={brandKit.instagram_handle || ''} onChange={(e) => setBrandKit({ ...brandKit, instagram_handle: e.target.value })}
+            className={inputClass} placeholder="@minhaloja" />
+        </div>
+
+        {/* WhatsApp */}
+        <div>
+          <label className="block text-sm font-500 text-dark-300 mb-2">WhatsApp</label>
+          <input type="text" value={brandKit.whatsapp || ''} onChange={(e) => setBrandKit({ ...brandKit, whatsapp: e.target.value })}
+            className={inputClass} placeholder="+55 11 99999-9999" />
+        </div>
+
+        {/* Save */}
+        <button onClick={handleSave} disabled={saving}
+          className="w-full py-3.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-display font-600 rounded-xl transition-all duration-300 flex items-center justify-center gap-2">
+          {saved ? <><Check size={18} /> Salvo!</> : saving ? 'Salvando...' : isNew ? 'Salvar e continuar' : 'Atualizar Brand Kit'}
+        </button>
+      </div>
+    </div>
+  );
+}
