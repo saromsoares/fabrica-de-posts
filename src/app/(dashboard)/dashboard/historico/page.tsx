@@ -18,7 +18,7 @@ export default function HistoryPage() {
       if (!user) return;
       const { data } = await supabase
         .from('generations')
-        .select('*, product:products(name, image_url), template:templates(name, format)')
+        .select('id, user_id, product_id, template_id, image_url, caption, fields_data, format, created_at, product:products(name, image_url), template:templates(name, format)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       if (data) setGenerations(data as Generation[]);

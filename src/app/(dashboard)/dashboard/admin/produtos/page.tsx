@@ -61,7 +61,7 @@ export default function AdminProdutosPage() {
       // Buscar produtos com joins
       const { data: prods, error: prodErr } = await supabase
         .from('products')
-        .select('*, category:categories(*), factory:factories(*)')
+        .select('id, name, description, category_id, factory_id, image_url, tags, active, created_at, updated_at, category:categories(id, name, slug, created_at), factory:factories(id, name, logo_url, active, created_at)')
         .order('created_at', { ascending: false });
 
       if (prodErr) {

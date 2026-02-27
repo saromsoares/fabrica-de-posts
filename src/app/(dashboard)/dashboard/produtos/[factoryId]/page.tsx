@@ -21,7 +21,7 @@ export default function FactoryProductsPage() {
     (async () => {
       const [{ data: fac }, { data: prods }, { data: cats }] = await Promise.all([
         supabase.from('factories').select('id, name, logo_url, active, created_at').eq('id', factoryId).single(),
-        supabase.from('products').select('*, category:categories(*)').eq('factory_id', factoryId).eq('active', true).order('name'),
+        supabase.from('products').select('id, name, description, category_id, factory_id, image_url, tags, active, created_at, updated_at, category:categories(id, name, slug, created_at)').eq('factory_id', factoryId).eq('active', true).order('name'),
         supabase.from('categories').select('id, name, slug, created_at').order('name'),
       ]);
       if (fac) setFactory(fac as FactoryType);

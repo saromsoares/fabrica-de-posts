@@ -283,7 +283,7 @@ export default function EstudioPage() {
       if (!user) return;
       setUserId(user.id);
       const [{ data: prod }, { data: bk }, { data: usageData }] = await Promise.all([
-        supabase.from('products').select('*, category:categories(*), factory:factories(*)').eq('id', productId).single(),
+        supabase.from('products').select('id, name, description, category_id, factory_id, image_url, tags, active, created_at, updated_at, category:categories(id, name, slug, created_at), factory:factories(id, name, logo_url, active, created_at)').eq('id', productId).single(),
         supabase.from('brand_kits').select('*').eq('user_id', user.id).single(),
         supabase.rpc('get_usage', { p_user_id: user.id }),
       ]);

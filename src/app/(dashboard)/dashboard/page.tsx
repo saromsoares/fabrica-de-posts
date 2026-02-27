@@ -23,7 +23,7 @@ export default function DashboardPage() {
       // Últimas gerações
       const { data: gens } = await supabase
         .from('generations')
-        .select('*, product:products(name), template:templates(name)')
+        .select('id, user_id, product_id, template_id, image_url, caption, fields_data, format, created_at, product:products(name), template:templates(name)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(6);

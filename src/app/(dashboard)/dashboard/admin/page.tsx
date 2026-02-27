@@ -11,10 +11,10 @@ export default function AdminPage() {
   useEffect(() => {
     (async () => {
       const [{ count: p }, { count: t }, { count: u }, { count: g }] = await Promise.all([
-        supabase.from('products').select('*', { count: 'exact', head: true }),
-        supabase.from('templates').select('*', { count: 'exact', head: true }),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('generations').select('*', { count: 'exact', head: true }),
+        supabase.from('products').select('id', { count: 'exact', head: true }),
+        supabase.from('templates').select('id', { count: 'exact', head: true }),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        supabase.from('generations').select('id', { count: 'exact', head: true }),
       ]);
       setStats({ products: p || 0, templates: t || 0, users: u || 0, generations: g || 0 });
     })();
