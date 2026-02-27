@@ -21,7 +21,7 @@ export default function AdminCategoriasPage() {
     try {
       const { data, error: err } = await supabase
         .from('categories')
-        .select('*')
+        .select('id, name, slug, created_at')
         .order('name');
       if (err) throw err;
       setCategories((data || []) as Category[]);

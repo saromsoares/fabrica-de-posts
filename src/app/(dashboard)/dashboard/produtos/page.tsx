@@ -16,7 +16,7 @@ export default function ProdutosPage() {
     (async () => {
       const { data } = await supabase
         .from('factories')
-        .select('*')
+        .select('id, name, logo_url, active, created_at')
         .eq('active', true)
         .order('name');
       if (data) setFactories(data as FactoryType[]);

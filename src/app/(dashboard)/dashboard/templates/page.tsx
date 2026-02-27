@@ -14,7 +14,7 @@ export default function TemplatesPage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from('templates').select('*').eq('active', true).order('name');
+      const { data } = await supabase.from('templates').select('id, name, format, preview_url, active, created_at').eq('active', true).order('name');
       if (data) setTemplates(data as Template[]);
       setLoading(false);
     })();

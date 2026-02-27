@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { Plus, Pencil, Trash2, X, Upload, AlertCircle, Factory } from 'lucide-react';
 import { extractError } from '@/lib/utils';
@@ -22,11 +22,11 @@ export default function AdminFabricasPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const supabase = createClient();
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const { data, error: fetchErr } = await supabase
         .from('factories')
-        .select('*')
+        .select('id, name, logo_url, active, created_at')
         .order('name');
       if (fetchErr) throw fetchErr;
       if (data) setFactories(data as FactoryType[]);
@@ -35,9 +35,9 @@ export default function AdminFabricasPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase]);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const clearMessages = () => { setError(null); setSuccess(null); };
 

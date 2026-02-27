@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { Plus, Pencil, Trash2, X, Upload } from 'lucide-react';
 import type { Template, TemplateConfig } from '@/types/database';
@@ -28,13 +28,13 @@ export default function AdminTemplatesPage() {
   const [saving, setSaving] = useState(false);
   const supabase = createClient();
 
-  const fetchData = async () => {
-    const { data } = await supabase.from('templates').select('*').order('created_at', { ascending: false });
+  const fetchData = useCallback(async () => {
+    const { data } = await supabase.from('templates').select('id, name, format, preview_url, config_json, active, created_at, updated_at').order('created_at', { ascending: false });
     if (data) setTemplates(data as Template[]);
     setLoading(false);
-  };
+  }, [supabase]);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleEdit = (tpl: Template) => {
     setEditingId(tpl.id);

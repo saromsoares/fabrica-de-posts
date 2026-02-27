@@ -38,25 +38,22 @@ export default function AdminProdutosPage() {
       // Buscar fábricas ATIVAS
       const { data: facs, error: facErr } = await supabase
         .from('factories')
-        .select('*')
+        .select('id, name, logo_url, active, created_at')
         .eq('active', true)
         .order('name');
 
       if (facErr) {
-        console.error('Erro ao buscar fábricas:', facErr);
         throw facErr;
       }
-      console.log('Fábricas carregadas:', facs?.length || 0, facs);
       setFactories((facs || []) as Factory[]);
 
       // Buscar categorias
       const { data: cats, error: catErr } = await supabase
         .from('categories')
-        .select('*')
+        .select('id, name, slug, created_at')
         .order('name');
 
       if (catErr) {
-        console.error('Erro ao buscar categorias:', catErr);
         throw catErr;
       }
       setCategories((cats || []) as Category[]);
@@ -68,7 +65,6 @@ export default function AdminProdutosPage() {
         .order('created_at', { ascending: false });
 
       if (prodErr) {
-        console.error('Erro ao buscar produtos:', prodErr);
         throw prodErr;
       }
       setProducts((prods || []) as Product[]);
