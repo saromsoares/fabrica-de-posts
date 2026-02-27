@@ -35,12 +35,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // TODO: Reativar proteção de admin após MVP
-  // Bloqueio de role desativado temporariamente para testes de ponta a ponta
-  // if (user && path.startsWith('/dashboard/admin')) {
-  //   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  //   if (profile?.role !== 'admin') return NextResponse.redirect(new URL('/dashboard', request.url));
-  // }
+  // Proteger rotas admin: só role='admin' acessa
+  if (user && path.startsWith('/dashboard/admin')) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.role !== 'admin') {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+  }
 
   // Onboarding: forçar Brand Kit se não completou
   if (user && path.startsWith('/dashboard') && !path.startsWith('/dashboard/brand-kit') && !path.startsWith('/dashboard/admin') && !path.startsWith('/dashboard/conta')) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { Users, Check } from 'lucide-react';
 import { PLAN_LABELS } from '@/lib/utils';
@@ -19,13 +19,16 @@ export default function AdminClientsPage() {
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
-  const fetchClients = async () => {
-    const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+  const fetchClients = useCallback(async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, full_name, role, plan, onboarding_complete, created_at')
+      .order('created_at', { ascending: false });
     if (data) setClients(data as ClientRow[]);
     setLoading(false);
-  };
+  }, [supabase]);
 
-  useEffect(() => { fetchClients(); }, []);
+  useEffect(() => { fetchClients(); }, [fetchClients]);
 
   const handleChangePlan = async (userId: string, plan: string) => {
     await supabase.from('profiles').update({ plan }).eq('id', userId);

@@ -2,10 +2,20 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse, type NextRequest } from 'next/server';
 
+/** Sanitiza o param "next": só permite paths relativos que começam com / */
+function sanitizeRedirect(raw: string | null): string {
+  if (!raw) return '/dashboard';
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw) || raw.startsWith('//')) {
+    return '/dashboard';
+  }
+  if (!raw.startsWith('/')) return '/dashboard';
+  return raw;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/dashboard';
+  const next = sanitizeRedirect(searchParams.get('next'));
 
   if (code) {
     const cookieStore = await cookies();
@@ -31,6 +41,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Se deu erro, manda pro login
   return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`);
 }

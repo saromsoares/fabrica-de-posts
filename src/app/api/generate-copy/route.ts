@@ -1,29 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
+/* Rate limiter simples em memória por IP */
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW = 60000;
+
+function checkRateLimit(ip: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return { allowed: true, remaining: RATE_LIMIT_MAX - 1 };
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  entry.count++;
+  return { allowed: true, remaining: RATE_LIMIT_MAX - entry.count };
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of rateLimitMap) {
+    if (now > val.resetAt) rateLimitMap.delete(key);
+  }
+}, 300000);
+
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || request.headers.get('x-real-ip')
+      || 'unknown';
+    const { allowed, remaining } = checkRateLimit(ip);
+
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Muitas requisições. Aguarde 1 minuto e tente novamente.' },
+        { status: 429, headers: { 'Retry-After': '60', 'X-RateLimit-Remaining': '0' } }
+      );
+    }
+
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Chave da OpenAI não configurada. Adicione OPENAI_API_KEY nas variáveis de ambiente.' },
-        { status: 500 }
+        { error: 'Chave da OpenAI não configurada no servidor. Contate o administrador.' },
+        { status: 503 }
       );
     }
 
     const body = await request.json();
-    const {
-      productName,
-      price,
-      condition,
-      whatsapp,
-      instagram,
-      storeName,
-      factoryName,
-      objective, // 'oferta' | 'institucional' | 'lancamento' | 'estoque_limitado' | 'beneficio'
-    } = body;
+    const { productName, price, condition, whatsapp, instagram, storeName, factoryName, objective } = body;
 
-    if (!productName) {
+    if (!productName || typeof productName !== 'string') {
       return NextResponse.json({ error: 'Nome do produto é obrigatório.' }, { status: 400 });
     }
 
@@ -34,7 +66,6 @@ export async function POST(request: NextRequest) {
       estoque_limitado: 'Urgência por estoque limitado. Crie FOMO (medo de perder) e escassez.',
       beneficio: 'Foco nos benefícios e vantagens do produto para o cliente. Eduque e convença.',
     };
-
     const objectivePrompt = objectiveMap[objective] || objectiveMap['oferta'];
 
     const prompt = `Você é um copywriter especialista em Instagram para lojas e revendedores brasileiros. Gere UMA legenda para Instagram altamente persuasiva.
@@ -76,21 +107,34 @@ REGRAS:
     const caption = completion.choices[0]?.message?.content?.trim() || '';
 
     if (!caption) {
-      return NextResponse.json({ error: 'A IA não retornou nenhum texto.' }, { status: 500 });
+      return NextResponse.json({ error: 'A IA não retornou nenhum texto. Tente novamente.' }, { status: 502 });
     }
 
-    return NextResponse.json({ caption });
+    return NextResponse.json(
+      { caption },
+      { headers: { 'X-RateLimit-Remaining': String(remaining) } }
+    );
   } catch (error) {
     console.error('Erro ao gerar copy:', error);
 
     if (error instanceof OpenAI.APIError) {
       if (error.status === 401) {
-        return NextResponse.json({ error: 'Chave da OpenAI inválida.' }, { status: 401 });
+        return NextResponse.json({ error: 'Chave da OpenAI inválida. Contate o administrador.' }, { status: 503 });
       }
       if (error.status === 429) {
-        return NextResponse.json({ error: 'Limite de requisições da OpenAI atingido. Tente novamente em alguns segundos.' }, { status: 429 });
+        return NextResponse.json(
+          { error: 'Limite da OpenAI atingido. Tente em alguns segundos.' },
+          { status: 429, headers: { 'Retry-After': '10' } }
+        );
       }
-      return NextResponse.json({ error: `Erro da OpenAI: ${error.message}` }, { status: error.status || 500 });
+      return NextResponse.json(
+        { error: `Erro da OpenAI: ${error.message}` },
+        { status: error.status || 500 }
+      );
+    }
+
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: 'Corpo da requisição inválido.' }, { status: 400 });
     }
 
     return NextResponse.json(
