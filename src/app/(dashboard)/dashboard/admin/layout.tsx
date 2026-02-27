@@ -2,10 +2,11 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Shield, Package, LayoutTemplate, Users, ArrowLeft } from 'lucide-react';
+import { Shield, Package, LayoutTemplate, Users, ArrowLeft, Factory } from 'lucide-react';
 
 const adminNav = [
   { href: '/dashboard/admin', icon: Shield, label: 'Painel Admin', exact: true },
+  { href: '/dashboard/admin/fabricas', icon: Factory, label: 'Fábricas' },
   { href: '/dashboard/admin/produtos', icon: Package, label: 'Produtos' },
   { href: '/dashboard/admin/templates', icon: LayoutTemplate, label: 'Templates' },
   { href: '/dashboard/admin/clients', icon: Users, label: 'Clientes' },

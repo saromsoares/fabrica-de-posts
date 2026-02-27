@@ -29,17 +29,27 @@ export type Category = {
   created_at: string;
 };
 
+export type Factory = {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  active: boolean;
+  created_at: string;
+};
+
 export type Product = {
   id: string;
   name: string;
   description: string | null;
   category_id: string | null;
+  factory_id: string | null;
   image_url: string | null;
   tags: string[];
   active: boolean;
   created_at: string;
   updated_at: string;
   category?: Category;
+  factory?: Factory;
 };
 
 export type TemplateConfig = {

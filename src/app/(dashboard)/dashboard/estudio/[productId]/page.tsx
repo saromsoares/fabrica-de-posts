@@ -7,7 +7,7 @@ import { toPng } from 'html-to-image';
 import { Download, Copy, Check, Zap, ChevronRight, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { generateCaption, CAPTION_STYLES } from '@/lib/captions';
 import Link from 'next/link';
-import type { Product, Template, BrandKit, Category, CaptionStyle, UsageInfo, GenerationFields } from '@/types/database';
+import type { Product, Template, BrandKit, Category, Factory, CaptionStyle, UsageInfo, GenerationFields } from '@/types/database';
 
 export default function EstudioPage() {
   const { productId } = useParams<{ productId: string }>();
@@ -42,7 +42,7 @@ export default function EstudioPage() {
       setUserId(user.id);
 
       const [{ data: prod }, { data: tpls }, { data: bk }, { data: usageData }] = await Promise.all([
-        supabase.from('products').select('*, category:categories(*)').eq('id', productId).single(),
+        supabase.from('products').select('*, category:categories(*), factory:factories(*)').eq('id', productId).single(),
         supabase.from('templates').select('*').eq('active', true).order('name'),
         supabase.from('brand_kits').select('*').eq('user_id', user.id).single(),
         supabase.rpc('get_usage', { p_user_id: user.id }),
@@ -162,7 +162,7 @@ export default function EstudioPage() {
     return (
       <div className="text-center py-20">
         <p className="text-dark-400 mb-4">Produto não encontrado.</p>
-        <Link href="/dashboard/produtos" className="text-brand-400 hover:text-brand-300 text-sm">← Voltar para produtos</Link>
+        <Link href="/dashboard/produtos" className="text-brand-400 hover:text-brand-300 text-sm">← Voltar ao catálogo</Link>
       </div>
     );
   }
@@ -173,7 +173,7 @@ export default function EstudioPage() {
     <div className="animate-fade-in-up">
       {/* Header com nome do produto */}
       <div className="mb-6">
-        <Link href="/dashboard/produtos" className="inline-flex items-center gap-1.5 text-sm text-dark-400 hover:text-white transition-colors mb-3">
+        <Link href={product.factory_id ? `/dashboard/produtos/${product.factory_id}` : '/dashboard/produtos'} className="inline-flex items-center gap-1.5 text-sm text-dark-400 hover:text-white transition-colors mb-3">
           <ArrowLeft size={16} /> Voltar aos produtos
         </Link>
         <div className="flex items-center gap-4">
@@ -307,6 +307,7 @@ export default function EstudioPage() {
               <h2 className="font-display font-700 mb-2">Confirme e gere</h2>
               <div className="text-sm space-y-2 text-dark-300">
                 <p>📦 <span className="text-white">{product.name}</span></p>
+                {(product.factory as Factory)?.name && <p>🏭 <span className="text-white">{(product.factory as Factory).name}</span></p>}
                 <p>🎨 <span className="text-white">{selectedTemplate?.name}</span> ({selectedTemplate?.format})</p>
                 {fields.price && <p>💰 {fields.price}</p>}
                 {fields.condition && <p>📌 {fields.condition}</p>}
@@ -364,7 +365,7 @@ export default function EstudioPage() {
               )}
 
               <div className="flex gap-3">
-                <Link href="/dashboard/produtos"
+                <Link href={product.factory_id ? `/dashboard/produtos/${product.factory_id}` : '/dashboard/produtos'}
                   className="flex-1 py-3 bg-dark-800 hover:bg-dark-700 text-white font-600 rounded-xl transition-all text-center text-sm">
                   ← Voltar aos produtos
                 </Link>
@@ -420,15 +421,25 @@ export default function EstudioPage() {
                   )}
                 </div>
 
-                {/* Logo no topo esquerdo */}
+                {/* Logo do Lojista no topo esquerdo (destaque principal) */}
                 {brandKit?.logo_url && (
                   <div className="absolute top-3 left-3">
                     <img src={brandKit.logo_url} alt="Logo" className="h-8 object-contain drop-shadow" />
                   </div>
                 )}
 
-                {/* Contato no topo direito */}
-                <div className="absolute top-3 right-3 text-right">
+                {/* Logo da Fábrica no topo direito (chancela oficial) */}
+                {(product.factory as Factory)?.logo_url && (
+                  <div className="absolute top-2 right-2 flex flex-col items-center">
+                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-1.5">
+                      <img src={(product.factory as Factory).logo_url!} alt={(product.factory as Factory).name} className="h-5 object-contain" />
+                    </div>
+                    <span className="text-white/50 text-[5px] mt-0.5 font-500">Produto oficial</span>
+                  </div>
+                )}
+
+                {/* Contato embaixo da logo do lojista */}
+                <div className="absolute bottom-2 right-3 text-right">
                   {brandKit?.instagram_handle && <p className="text-white/70 text-[8px] drop-shadow">{brandKit.instagram_handle}</p>}
                   {brandKit?.whatsapp && <p className="text-white/70 text-[8px] drop-shadow">{brandKit.whatsapp}</p>}
                 </div>
