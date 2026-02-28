@@ -255,14 +255,29 @@ const PREVIEW = { feed: { w: 320, h: 320 }, story: { w: 270, h: 480 } };
 const SAFE_PAD = 48; // 48px safe zone em canvas 1080
 
 /**
- * Proporções de zona com cálculo em PIXELS (não %).
- * header + footer são fixos; body usa flex:1 → preenche o restante.
- * Isso GARANTE que header + gap + body + gap + footer = innerH exato.
+ * CSS Grid Determinístico — 4 zonas rígidas.
+ * gridTemplateRows com porcentagens que somam EXATAMENTE 100%.
+ * Sem gap — cada zona ocupa seu espaço completo sem invasão.
+ *
+ * ZONA A = Header (logos)            15%  →  ~162px (feed) / ~144px (story)
+ * ZONA B = Body (imagem produto)     55%  →  ~594px (feed) / ~960px (story)
+ * ZONA C = Info (nome+preço+cond)    15%  →  ~162px (feed) / ~432px (story)
+ * ZONA D = Action (CTA+contato)      15%  →  ~162px (feed) / ~384px (story)
  */
-const ZONES = {
-  feed:  { header: 0.15, footer: 0.30, gap: 0.03 },
-  story: { header: 0.10, footer: 0.34, gap: 0.02 },
+const GRID_ROWS = {
+  feed:  '15% 55% 15% 15%',   // 15+55+15+15 = 100%
+  story: '8% 52% 22% 18%',    // 8+52+22+18  = 100%
 };
+
+/** Font stack explícito para export — html-to-image NÃO herda @font-face nem body */
+const EXPORT_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
+/**
+ * Fundo escuro padrão seguro — aplicado ATRÁS do bgStyle do template.
+ * Garante que mesmo templates light (#fafafa) nunca exportem com
+ * artefatos brancos causados por transparência ou falha de render.
+ */
+const FALLBACK_BG = 'radial-gradient(circle at 50% 50%, #1a202c 0%, #0d1117 100%)';
 
 function twFs(cls: string): number {
   if (cls.includes('text-3xl')) return 30;
@@ -366,7 +381,8 @@ export default function EstudioPage() {
   const primary = brandKit?.primary_color || '#e0604e';
   const secondary = brandKit?.secondary_color || '#1a1b2e';
 
-  // Extrair cor dominante da logo quando brandKit carrega
+  // Extrair cor dominante da logo do REVENDEDOR (brandKit)
+  // Usada para: smart logo styling + cor dinâmica do CTA
   useEffect(() => {
     if (!brandKit?.logo_url) return;
     let cancelled = false;
@@ -439,7 +455,9 @@ export default function EstudioPage() {
     }
   };
 
-  // Gerar arte + legenda (usa exportRef — nó offscreen em 1080px)
+  // ═══════════════════════════════════════════════════════
+  //  GERAR ARTE — html-to-image captura o nó offscreen
+  // ═══════════════════════════════════════════════════════
   const handleGenerateAll = async () => {
     if (!exportRef.current || !userId || isOverLimit) return;
     setGenerating(true);
@@ -455,16 +473,32 @@ export default function EstudioPage() {
       const exportW = isStory ? CANVAS.story.w : CANVAS.feed.w;
       const exportH = isStory ? CANVAS.story.h : CANVAS.feed.h;
 
-      // html-to-image: captura APENAS o nó de export offscreen.
-      // NÃO passar backgroundColor — o bgStyle do template já está no nó.
-      // Se passasse 'transparent', gera PNG com alpha. Se undefined, html-to-image
-      // usa branco MAS só atrás do nó — como o nó tem bgStyle, fica coberto.
+      // ── FIX EXPORT ──
+      // 1. width/height FORÇADOS em 1080×1080 (ou 1080×1920 story)
+      // 2. pixelRatio: 2 → saída 2160×2160 para Instagram HD
+      // 3. NÃO passar backgroundColor — o bgStyle do template + FALLBACK_BG
+      //    já estão aplicados diretamente no nó DOM via inline style.
+      //    Se passasse 'transparent', gera PNG com alpha (branco em JPG viewers).
+      //    Se passasse cor fixa, cobriria o template bg.
+      // 4. cacheBust: true → evita cache de imagens CORS
+      // 5. skipAutoScale: true → usa EXATAMENTE as dimensões do nó
+      // 6. filter: ignora nós fora do exportRef (scroll, body styles)
       const dataUrl = await toPng(exportRef.current, {
         width: exportW,
         height: exportH,
         pixelRatio: 2,
         cacheBust: true,
         includeQueryParams: true,
+        skipAutoScale: true,
+        style: {
+          transform: 'none',
+          transformOrigin: 'top left',
+        },
+        filter: (node: HTMLElement) => {
+          // Remove qualquer nó com data-export-ignore
+          if (node?.dataset?.exportIgnore) return false;
+          return true;
+        },
       });
 
       // Upload (Cloudinary com fallback Supabase)
@@ -540,8 +574,20 @@ export default function EstudioPage() {
   const S = canvasW / 320; // fator de escala preview → canvas (~3.375)
 
 
-  /* ─── Art content render (shared by preview + export) ─── */
+  /* ═══════════════════════════════════════════════════════
+     renderArtContent — Layout de Grid Determinístico
+     ═══════════════════════════════════════════════════════
+     Renderiza o conteúdo do card com 4 zonas rígidas via CSS Grid.
+     TODAS as dimensões são calculadas em pixels do canvas (1080).
+     Shared entre preview (com transform scale) e export (1:1).
+     
+     LOGO-INTELLIGENCE:
+     - Slot ESQUERDO: Logo da FÁBRICA (fabricante do produto)
+     - Slot DIREITO:  Logo do REVENDEDOR (brand kit do usuário)
+     - Cor dominante do logo do revendedor → CTA button background
+  */
   const renderArtContent = () => {
+    // ── PARSE TEMPLATE CLASSES → INLINE STYLES ──
     const nameFs = Math.round(twFs(tpl.nameClass) * S);
     const nameFw = twFw(tpl.nameClass);
     const nameColor = twColor(tpl.nameClass);
@@ -569,20 +615,16 @@ export default function EstudioPage() {
     const ctaTextColor = tpl.ctaClass.includes('text-black') ? '#000000' : '#ffffff';
     const ctaBackdrop = tpl.ctaClass.includes('backdrop-blur') ? 'blur(8px)' : undefined;
 
+    // ── LOGO-INTELLIGENCE: CTA usa cor dominante do logo do revendedor ──
+    // Se não tiver cor extraída, fallback para template ctaBg
+    const ctaDynamicBg = logoDominantColor || tpl.ctaBg(primary);
+
     const isLight = tpl.id === 'minimalista-premium' || tpl.id === 'institucional-clean';
     const condColor = isLight ? '#4b5563' : 'rgba(255,255,255,0.8)';
     const contactFs = Math.round(8 * S);
     const condFs = Math.round(10 * S);
     const accentRefW = 320;
     const accentRefH = fmt === 'story' ? Math.round(480 * (320 / 270)) : 320;
-
-    const zone = ZONES[fmt];
-    const innerH = canvasH - SAFE_PAD * 2;
-    const gapPx = Math.round(innerH * zone.gap);
-    const usableH = innerH - gapPx * 2; // espaço sem gaps
-    const headerPx = Math.round(usableH * zone.header);
-    const footerPx = Math.round(usableH * zone.footer);
-    // body = flex:1 → preenche exatamente usableH - headerPx - footerPx
 
     return (
       <>
@@ -602,85 +644,86 @@ export default function EstudioPage() {
         {/* Layer 1: Overlay gradient */}
         <div style={{ position: 'absolute', inset: 0, zIndex: 2, ...tpl.overlayStyle() }} />
 
-        {/* Layer 2: Zone layout rígido com safe zones */}
+        {/* Layer 2: CSS Grid Determinístico — 4 zonas rígidas, zero gap, zero invasão */}
         <div style={{
           position: 'absolute', inset: 0,
           padding: SAFE_PAD,
-          display: 'flex', flexDirection: 'column',
-          gap: gapPx,
+          display: 'grid',
+          gridTemplateRows: GRID_ROWS[fmt],
+          gridTemplateColumns: '1fr',
+          gap: 0,
           zIndex: 3,
           overflow: 'hidden',
         }}>
 
-          {/* ══════ HEADER ZONE — Logos ══════ */}
+          {/* ══════ ZONA A — HEADER (15%) — Logos fixos ══════
+              Slot ESQUERDO: Fábrica (fabricante)
+              Slot DIREITO:  Revendedor (brand kit / loja) */}
           <div style={{
-            flex: `0 0 ${headerPx}px`,
-            display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             zIndex: 30,
             overflow: 'hidden',
             minHeight: 0,
           }}>
-            {/* Logo da loja (brand kit) */}
-            {brandKit?.logo_url && (
+            {/* ── SLOT ESQUERDO: Logo da FÁBRICA ── */}
+            {(product?.factory as Factory)?.logo_url ? (
               <div style={{
                 maxWidth: '45%',
                 overflow: 'hidden',
                 flexShrink: 0,
               }}>
                 <img
-                  src={brandKit.logo_url}
-                  alt="Logo"
+                  src={(product!.factory as Factory).logo_url!}
+                  alt=""
                   crossOrigin="anonymous"
                   style={{
-                    height: Math.round(24 * S),
+                    height: Math.round(22 * S),
                     maxWidth: '100%',
                     objectFit: 'contain',
-                    filter: logoStyle?.filter || 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))',
+                    filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.4))',
                     display: 'block',
                   }}
                 />
               </div>
-            )}
-            {/* Logo da fábrica */}
-            {(product?.factory as Factory)?.logo_url && (
+            ) : <div />}
+
+            {/* ── SLOT DIREITO: Logo do REVENDEDOR (brand kit) ── */}
+            {brandKit?.logo_url ? (
               <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
                 maxWidth: '40%',
                 overflow: 'hidden',
                 flexShrink: 0,
               }}>
                 <div style={{
-                  background: 'rgba(255,255,255,0.1)',
+                  background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.08)',
                   backdropFilter: 'blur(8px)',
                   borderRadius: Math.round(4 * S),
                   padding: Math.round(4 * S),
                   maxWidth: '100%',
                 }}>
                   <img
-                    src={(product!.factory as Factory).logo_url!}
-                    alt=""
+                    src={brandKit.logo_url}
+                    alt="Logo"
                     crossOrigin="anonymous"
                     style={{
-                      height: Math.round(16 * S),
+                      height: Math.round(18 * S),
                       maxWidth: Math.round(100 * S),
                       objectFit: 'contain',
+                      filter: logoStyle?.filter || 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))',
                       display: 'block',
                     }}
                   />
                 </div>
-                <span style={{
-                  color: 'rgba(255,255,255,0.5)',
-                  fontSize: Math.round(5 * S),
-                  marginTop: Math.round(2 * S),
-                  fontWeight: 500,
-                }}>Produto oficial</span>
               </div>
-            )}
+            ) : <div />}
           </div>
 
-          {/* ══════ BODY ZONE — Imagem do produto ══════ */}
+          {/* ══════ ZONA B — BODY (55%) — Imagem do produto ══════
+              object-fit: contain → NUNCA distorce
+              drop-shadow → profundidade visual
+              Centralizada vertical + horizontal */}
           <div style={{
-            flex: '1 1 0',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             overflow: 'hidden',
             zIndex: 10,
@@ -692,32 +735,39 @@ export default function EstudioPage() {
                 alt=""
                 crossOrigin="anonymous"
                 style={{
-                  maxWidth: '85%',
-                  maxHeight: '95%',
+                  maxWidth: '88%',
+                  maxHeight: '92%',
                   objectFit: 'contain',
-                  filter: tpl.productImgClass.includes('drop-shadow') ? 'drop-shadow(0 8px 24px rgba(0,0,0,0.4))' : undefined,
+                  filter: tpl.productImgClass.includes('drop-shadow')
+                    ? 'drop-shadow(0 12px 32px rgba(0,0,0,0.45)) drop-shadow(0 4px 8px rgba(0,0,0,0.2))'
+                    : 'drop-shadow(0 6px 16px rgba(0,0,0,0.15))',
                   display: 'block',
                 }}
               />
             )}
           </div>
 
-          {/* ══════ FOOTER ZONE — Texto + CTA + Contato ══════ */}
+          {/* ══════ ZONA C — INFO (15%) — Nome + Preço + Condição ══════
+              Hierarquia: Nome (grande, bold) > Preço (destaque) > Condição (sutil)
+              line-clamp 2 no nome, ellipsis no preço e condição */}
           <div style={{
-            flex: `0 0 ${footerPx}px`,
             display: 'flex', flexDirection: 'column',
-            justifyContent: 'flex-end',
+            justifyContent: 'center',
             zIndex: 20,
             textAlign: nameCenter ? 'center' : 'left',
             overflow: 'hidden',
             minHeight: 0,
+            gap: Math.round(3 * S),
           }}>
-            {/* Product name — line-clamp 2 com word break */}
+            {/* Product name — bold, max 2 linhas */}
             <p style={{
-              fontSize: nameFs, fontWeight: nameFw, color: nameColor,
+              fontSize: Math.max(nameFs, Math.round(14 * S)),
+              fontWeight: Math.max(nameFw, 600),
+              color: nameColor,
               letterSpacing: nameTracking,
               textTransform: nameUpper ? 'uppercase' : undefined,
-              textShadow: nameShadow, lineHeight: 1.2,
+              textShadow: nameShadow,
+              lineHeight: 1.15,
               overflow: 'hidden', display: '-webkit-box',
               WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
               wordBreak: 'break-word',
@@ -727,67 +777,97 @@ export default function EstudioPage() {
               {product?.name}
             </p>
 
-            {/* Preço */}
-            {fields.price && (
-              <p style={{
-                fontSize: priceFs, fontWeight: priceFw,
-                letterSpacing: priceTracking,
-                fontFamily: priceMono ? 'ui-monospace, monospace' : undefined,
-                lineHeight: 1.1, margin: 0, marginTop: Math.round(4 * S),
-                whiteSpace: 'nowrap',
-                overflow: 'hidden', textOverflow: 'ellipsis',
-                ...tpl.priceStyle(secondary),
-              }}>
-                {fields.price}
-              </p>
-            )}
-
-            {/* Condição */}
-            {fields.condition && (
-              <p style={{
-                fontSize: condFs, color: condColor,
-                margin: 0, marginTop: Math.round(2 * S), lineHeight: 1.3,
-                overflow: 'hidden', display: '-webkit-box',
-                WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
-                wordBreak: 'break-word',
-              }}>
-                {fields.condition}
-              </p>
-            )}
-
-            {/* CTA */}
-            {fields.cta && (
+            {/* Row: Preço + Condição lado a lado para máxima compacidade */}
+            {(fields.price || fields.condition) && (
               <div style={{
-                marginTop: Math.round(6 * S),
-                display: 'inline-block',
-                alignSelf: nameCenter ? 'center' : 'flex-start',
-                backgroundColor: tpl.ctaBg(primary),
+                display: 'flex', alignItems: 'baseline', gap: Math.round(8 * S),
+                flexWrap: 'wrap',
+              }}>
+                {fields.price && (
+                  <p style={{
+                    fontSize: Math.max(priceFs, Math.round(20 * S)),
+                    fontWeight: Math.max(priceFw, 700),
+                    letterSpacing: priceTracking,
+                    fontFamily: priceMono ? 'ui-monospace, monospace' : undefined,
+                    lineHeight: 1.05,
+                    margin: 0,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden', textOverflow: 'ellipsis',
+                    flexShrink: 0,
+                    ...tpl.priceStyle(secondary),
+                  }}>
+                    {fields.price}
+                  </p>
+                )}
+
+                {fields.condition && (
+                  <p style={{
+                    fontSize: Math.round(condFs * 1.0),
+                    fontWeight: 500,
+                    color: condColor,
+                    margin: 0,
+                    lineHeight: 1.3,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden', textOverflow: 'ellipsis',
+                    flexShrink: 1,
+                    minWidth: 0,
+                  }}>
+                    {fields.condition}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ══════ ZONA D — ACTION (15%) — CTA + Contato ══════
+              CTA usa cor dinâmica extraída do logo do revendedor.
+              Contato (Instagram/WhatsApp) alinhado à direita. */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            zIndex: 20,
+            overflow: 'hidden',
+            minHeight: 0,
+          }}>
+            {/* CTA Button — cor dinâmica via Logo-Intelligence */}
+            {fields.cta ? (
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: ctaDynamicBg,
                 color: ctaTextColor,
-                fontSize: ctaFs, fontWeight: ctaFw,
+                fontSize: Math.max(ctaFs, Math.round(10 * S)),
+                fontWeight: Math.max(ctaFw, 600),
                 textTransform: ctaUpper ? 'uppercase' : undefined,
-                letterSpacing: ctaTracking, borderRadius: ctaRadius,
+                letterSpacing: ctaTracking || '0.04em',
+                borderRadius: ctaRadius,
                 border: ctaBorder, borderColor: ctaBorderColor,
                 backdropFilter: ctaBackdrop,
-                padding: `${Math.round(5 * S)}px ${Math.round(14 * S)}px`,
+                padding: `${Math.round(8 * S)}px ${Math.round(20 * S)}px`,
                 whiteSpace: 'nowrap',
-                maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis',
+                maxWidth: '60%', overflow: 'hidden', textOverflow: 'ellipsis',
+                boxShadow: `0 4px 12px ${ctaDynamicBg}44`,
               }}>
                 {fields.cta}
               </div>
-            )}
+            ) : <div />}
 
-            {/* Contato */}
-            {(brandKit?.instagram_handle || brandKit?.whatsapp) && (
+            {/* Contato — alinhado direita */}
+            {(brandKit?.instagram_handle || brandKit?.whatsapp) ? (
               <div style={{
-                marginTop: Math.round(6 * S),
-                textAlign: 'right', alignSelf: 'flex-end',
-                maxWidth: '60%',
+                textAlign: 'right',
+                maxWidth: '38%',
                 overflow: 'hidden',
               }}>
                 {brandKit?.instagram_handle && (
                   <p style={{
-                    fontSize: contactFs, color: isLight ? '#6b7280' : 'rgba(255,255,255,0.7)',
-                    lineHeight: 1.4, filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))',
+                    fontSize: contactFs,
+                    fontWeight: 600,
+                    color: isLight ? '#6b7280' : 'rgba(255,255,255,0.75)',
+                    lineHeight: 1.4,
+                    filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))',
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     margin: 0,
                   }}>
@@ -796,8 +876,11 @@ export default function EstudioPage() {
                 )}
                 {brandKit?.whatsapp && (
                   <p style={{
-                    fontSize: contactFs, color: isLight ? '#6b7280' : 'rgba(255,255,255,0.7)',
-                    lineHeight: 1.4, filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))',
+                    fontSize: contactFs,
+                    fontWeight: 600,
+                    color: isLight ? '#6b7280' : 'rgba(255,255,255,0.75)',
+                    lineHeight: 1.4,
+                    filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))',
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     margin: 0,
                   }}>
@@ -805,7 +888,7 @@ export default function EstudioPage() {
                   </p>
                 )}
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </>
@@ -835,10 +918,16 @@ export default function EstudioPage() {
     <div className="animate-fade-in-up">
       {/* ══════ OFFSCREEN EXPORT NODE ══════
           Nó dedicado em tamanho EXATO (1080×1080 ou 1080×1920).
-          - position: absolute + left negativo (NÃO fixed — Safari bug).
-          - SEM opacity:0 — browser PRECISA pintar as imagens para
-            html-to-image capturá-las no clone.
-          - overflow: hidden no inner garante canvas sem vazamento. */}
+          ARQUITETURA DE CAMADAS:
+          1. Container externo: position absolute, fora da viewport
+             SEM opacity:0 — browser PRECISA pintar as imagens.
+          2. Export node (exportRef):
+             - width/height EXATOS do canvas
+             - FALLBACK_BG como background base (previne branco)
+             - Template bgStyle por CIMA do fallback
+             - fontFamily explícito (html-to-image não herda body)
+             - overflow: hidden (nenhum pixel vaza)
+      */}
       <div aria-hidden="true" style={{
         position: 'absolute', left: -99999, top: 0,
         pointerEvents: 'none',
@@ -846,9 +935,15 @@ export default function EstudioPage() {
         <div
           ref={exportRef}
           style={{
-            width: canvasW, height: canvasH,
-            position: 'relative', overflow: 'hidden',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            width: canvasW,
+            height: canvasH,
+            position: 'relative',
+            overflow: 'hidden',
+            fontFamily: EXPORT_FONT,
+            // ── DOUBLE BACKGROUND: fallback escuro + template ──
+            // O FALLBACK_BG garante que NUNCA haverá branco no export.
+            // O bgStyle do template sobrepõe com background opaco.
+            background: FALLBACK_BG,
             ...tpl.bgStyle(primary, secondary),
           }}
         >
@@ -1091,7 +1186,8 @@ export default function EstudioPage() {
                   transform: `scale(${previewScale})`,
                   transformOrigin: 'top left',
                   position: 'relative', overflow: 'hidden',
-                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                  fontFamily: EXPORT_FONT,
+                  background: FALLBACK_BG,
                   ...tpl.bgStyle(primary, secondary),
                 }}>
                   {renderArtContent()}
