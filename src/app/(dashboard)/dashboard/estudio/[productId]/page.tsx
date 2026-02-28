@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { toPng } from 'html-to-image';
 import { Download, Copy, Check, Zap, ChevronRight, AlertTriangle, ArrowLeft, Sparkles, RefreshCw } from 'lucide-react';
+import ShareButtons from '@/components/ShareButtons';
 import { generateCaption } from '@/lib/captions';
 import { extractError } from '@/lib/utils';
 import Link from 'next/link';
@@ -523,7 +524,7 @@ export default function EstudioPage() {
       });
 
       if (usageResult) setUsage({ ...usageResult, count: usageResult.count, remaining: usageResult.limit - usageResult.count } as UsageInfo);
-      setStep(4);
+      setStep(3);
     } catch (err) {
       console.error('Erro ao gerar:', err);
     } finally {
@@ -904,7 +905,7 @@ export default function EstudioPage() {
     );
   }
 
-  const stepLabels = ['Template', 'Dados', 'Preview', 'Download'];
+  const stepLabels = ['Template', 'Personalizar', 'Download'];
 
   return (
     <div className="animate-fade-in-up">
@@ -988,7 +989,7 @@ export default function EstudioPage() {
               {step > i + 1 ? <Check size={14} /> : i + 1}
             </button>
             <span className={`hidden sm:inline ${step === i + 1 ? 'text-white' : 'text-dark-500'}`}>{s}</span>
-            {i < 3 && <ChevronRight size={14} className="text-dark-700" />}
+            {i < 2 && <ChevronRight size={14} className="text-dark-700" />}
           </div>
         ))}
       </div>
@@ -1024,76 +1025,99 @@ export default function EstudioPage() {
             </div>
           )}
 
-          {/* STEP 2: Dados + Objetivo */}
+          {/* STEP 2: Dados + Objetivo + GERAR (fluxo unificado) */}
           {step === 2 && (
-            <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-6 space-y-4">
-              <h2 className="font-display font-700 mb-2">Dados do post</h2>
-              <div>
-                <label className="block text-sm text-dark-300 mb-1.5">Preço Promocional</label>
-                <input type="text" value={fields.price || ''} onChange={(e) => setFields({ ...fields, price: e.target.value })}
-                  className={inputClass} placeholder="R$ 199,90" />
+            <div className="space-y-4">
+              {/* Mini preview mobile — visível apenas em telas pequenas */}
+              <div className="lg:hidden bg-dark-900/60 border border-dark-800/40 rounded-2xl p-3">
+                <p className="text-[10px] text-dark-500 mb-2 text-center">Preview ao vivo</p>
+                <div className="flex justify-center">
+                  <div style={{ width: 200, height: fmt === 'story' ? 356 : 200, overflow: 'hidden', borderRadius: 6 }}>
+                    <div style={{
+                      width: canvasW, height: canvasH,
+                      transform: `scale(${200 / canvasW})`,
+                      transformOrigin: 'top left',
+                      position: 'relative', overflow: 'hidden',
+                      fontFamily: EXPORT_FONT,
+                      background: FALLBACK_BG,
+                      ...tpl.bgStyle(primary, secondary),
+                    }}>
+                      {renderArtContent()}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm text-dark-300 mb-1.5">Condições de Pagamento</label>
-                <input type="text" value={fields.condition || ''} onChange={(e) => setFields({ ...fields, condition: e.target.value })}
-                  className={inputClass} placeholder="12x sem juros, Frete grátis..." />
+
+              <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-6 space-y-4">
+                <h2 className="font-display font-700 mb-2">Personalize o post</h2>
+                <div>
+                  <label className="block text-sm text-dark-300 mb-1.5">Preço Promocional</label>
+                  <input type="text" value={fields.price || ''} onChange={(e) => setFields({ ...fields, price: e.target.value })}
+                    className={inputClass} placeholder="R$ 199,90" />
+                </div>
+                <div>
+                  <label className="block text-sm text-dark-300 mb-1.5">Condições de Pagamento</label>
+                  <input type="text" value={fields.condition || ''} onChange={(e) => setFields({ ...fields, condition: e.target.value })}
+                    className={inputClass} placeholder="12x sem juros, Frete grátis..." />
+                </div>
+                <div>
+                  <label className="block text-sm text-dark-300 mb-1.5">CTA (chamada para ação)</label>
+                  <input type="text" value={fields.cta || ''} onChange={(e) => setFields({ ...fields, cta: e.target.value })}
+                    className={inputClass} placeholder="Garanta o seu!" />
+                </div>
+                <div>
+                  <label className="block text-sm text-dark-300 mb-1.5">Objetivo do Post (para a legenda IA)</label>
+                  <select value={captionStyle} onChange={e => setCaptionStyle(e.target.value as CaptionStyle)}
+                    className={`${inputClass} bg-dark-950`}>
+                    {OBJECTIVE_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-dark-500 mt-1">
+                    {OBJECTIVE_OPTIONS.find(o => o.value === captionStyle)?.hint}
+                  </p>
+                </div>
+
+                {/* Resumo compacto */}
+                <div className="pt-3 border-t border-dark-800/30 text-xs text-dark-400 space-y-1">
+                  <p>🎨 {selectedTemplate?.name} • {selectedTemplate?.format}</p>
+                  {fields.price && <p>💰 {fields.price} {fields.condition && `• ${fields.condition}`}</p>}
+                </div>
+
+                {/* BOTÃO GERAR — direto do Step 2 (sem Step 3 intermediário) */}
+                <button onClick={handleGenerateAll} disabled={generating || isOverLimit}
+                  className="w-full py-4 bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-700 hover:to-purple-700 disabled:opacity-40 text-white font-display font-600 text-lg rounded-xl transition-all flex items-center justify-center gap-3 shadow-lg shadow-brand-600/20">
+                  {generating ? (
+                    <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Gerando Arte + Legenda...</>
+                  ) : (
+                    <><Zap size={20} /> Gerar Arte e Legenda</>
+                  )}
+                </button>
               </div>
-              <div>
-                <label className="block text-sm text-dark-300 mb-1.5">CTA (chamada para ação)</label>
-                <input type="text" value={fields.cta || ''} onChange={(e) => setFields({ ...fields, cta: e.target.value })}
-                  className={inputClass} placeholder="Garanta o seu!" />
-              </div>
-              <div>
-                <label className="block text-sm text-dark-300 mb-1.5">Objetivo do Post (para a legenda IA)</label>
-                <select value={captionStyle} onChange={e => setCaptionStyle(e.target.value as CaptionStyle)}
-                  className={`${inputClass} bg-dark-950`}>
-                  {OBJECTIVE_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-dark-500 mt-1">
-                  {OBJECTIVE_OPTIONS.find(o => o.value === captionStyle)?.hint}
-                </p>
-              </div>
-              <button onClick={() => setStep(3)}
-                className="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-600 rounded-xl transition-all">
-                Ver preview →
-              </button>
             </div>
           )}
 
-          {/* STEP 3: Preview + Gerar */}
+          {/* STEP 3: Download + Legenda + Compartilhar */}
           {step === 3 && (
-            <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-6 space-y-4">
-              <h2 className="font-display font-700 mb-2">Confirme e gere</h2>
-              <div className="text-sm space-y-2 text-dark-300">
-                <p>📦 <span className="text-white">{product.name}</span></p>
-                {(product.factory as Factory)?.name && <p>🏭 <span className="text-white">{(product.factory as Factory).name}</span></p>}
-                <p>🎨 <span className="text-white">{selectedTemplate?.name}</span> ({selectedTemplate?.format})</p>
-                {fields.price && <p>💰 {fields.price}</p>}
-                {fields.condition && <p>📌 {fields.condition}</p>}
-                {fields.cta && <p>🎯 {fields.cta}</p>}
-                <p>📝 Objetivo: {OBJECTIVE_OPTIONS.find(o => o.value === captionStyle)?.label}</p>
-              </div>
-              <button onClick={handleGenerateAll} disabled={generating || isOverLimit}
-                className="w-full py-4 bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-700 hover:to-purple-700 disabled:opacity-40 text-white font-display font-600 text-lg rounded-xl transition-all flex items-center justify-center gap-3 shadow-lg shadow-brand-600/20">
-                {generating ? (
-                  <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Gerando Arte + Legenda...</>
-                ) : (
-                  <><Zap size={20} /> Gerar Arte e Legenda</>
-                )}
-              </button>
-            </div>
-          )}
-
-          {/* STEP 4: Download + Legenda */}
-          {step === 4 && (
             <div className="space-y-4">
               <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-6">
                 <h2 className="font-display font-700 mb-4 text-brand-400">Arte gerada! 🎉</h2>
+
+                {/* Share Buttons — Download, WhatsApp, Copiar, Native Share */}
+                {generatedImageUrl && (
+                  <ShareButtons
+                    imageUrl={generatedImageUrl}
+                    caption={aiCaption || caption?.medium || undefined}
+                    productName={product.name}
+                    whatsapp={brandKit?.whatsapp || undefined}
+                    instagram={brandKit?.instagram_handle || undefined}
+                    className="mb-4"
+                  />
+                )}
+
                 <button onClick={handleDownload}
                   className="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-600 rounded-xl transition-all flex items-center justify-center gap-2">
-                  <Download size={18} /> Baixar Imagem PNG
+                  <Download size={18} /> Baixar Imagem PNG (HD)
                 </button>
               </div>
 
@@ -1160,6 +1184,10 @@ export default function EstudioPage() {
                   Criar outra arte
                 </button>
               </div>
+              <Link href="/dashboard/historico"
+                className="block text-center text-xs text-dark-500 hover:text-brand-400 transition-colors mt-2">
+                Ver todas as artes →
+              </Link>
             </div>
           )}
         </div>
@@ -1186,7 +1214,7 @@ export default function EstudioPage() {
                 </div>
               </div>
             </div>
-            {generatedImageUrl && step === 4 && (
+            {generatedImageUrl && step === 3 && (
               <div className="mt-4 text-center">
                 <p className="text-xs text-brand-400">✅ Arte final gerada ({canvasW}×{canvasH} @2x)</p>
               </div>
