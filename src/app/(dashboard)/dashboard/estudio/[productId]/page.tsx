@@ -3,13 +3,14 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
-import { uploadImage } from '@/lib/upload';
 import { toPng } from 'html-to-image';
 import { Download, Copy, Check, Zap, ChevronRight, AlertTriangle, ArrowLeft, Sparkles, RefreshCw } from 'lucide-react';
 import { generateCaption } from '@/lib/captions';
 import { extractError } from '@/lib/utils';
 import Link from 'next/link';
 import type { Product, BrandKit, Category, Factory, CaptionStyle, UsageInfo, GenerationFields } from '@/types/database';
+import { extractDominantColor, getSmartLogoStyle, extractBgColorFromStyle, type LogoStyle } from '@/lib/image-processing';
+import { uploadImage } from '@/lib/upload';
 
 /* ═══════════════════════════════════════════════════════
    10 TEMPLATES VISUAIS PRÉ-PROGRAMADOS
@@ -21,7 +22,6 @@ type VisualTemplate = {
   description: string;
   format: 'feed' | 'story';
   emoji: string;
-  // Style config applied to canvas
   bgStyle: (primary: string, secondary: string) => React.CSSProperties;
   overlayStyle: () => React.CSSProperties;
   productImgClass: string;
@@ -44,11 +44,11 @@ const VISUAL_TEMPLATES: VisualTemplate[] = [
     bgStyle: (p, s) => ({ background: `linear-gradient(135deg, ${p} 0%, #1a1a2e 50%, ${s} 100%)` }),
     overlayStyle: () => ({ background: 'linear-gradient(transparent 30%, rgba(0,0,0,0.85))' }),
     productImgClass: 'max-w-[65%] max-h-[55%] object-contain drop-shadow-2xl',
-    priceStyle: (s) => ({ color: '#FFD700', textShadow: '0 2px 8px rgba(0,0,0,0.5)' }),
+    priceStyle: () => ({ color: '#FFD700', textShadow: '0 2px 8px rgba(0,0,0,0.5)' }),
     priceClass: 'text-3xl font-900 tracking-tight',
     nameClass: 'text-white font-800 text-base leading-tight drop-shadow-lg',
     ctaBg: () => '#e53e3e',
-    ctaClass: 'text-xs font-700 uppercase tracking-wider px-4 py-1.5 rounded-full animate-pulse',
+    ctaClass: 'text-xs font-700 uppercase tracking-wider px-4 py-1.5 rounded-full',
     accentElement: () => (
       <div className="absolute top-0 right-0 w-24 h-24 bg-red-600 rounded-bl-full flex items-center justify-center">
         <span className="text-white font-900 text-xs -rotate-12 translate-x-2 -translate-y-1">OFERTA!</span>
@@ -113,7 +113,7 @@ const VISUAL_TEMPLATES: VisualTemplate[] = [
     accentElement: () => (
       <>
         <div className="absolute top-0 left-0 right-0 h-6 bg-[repeating-linear-gradient(45deg,#f59e0b,#f59e0b_10px,#1a1a1a_10px,#1a1a1a_20px)] opacity-80" />
-        <div className="absolute bottom-0 left-0 right-0 h-6 bg-[repeating-linear-gradient(-45deg,#f59e0b,#f59e0b_10px,#1a1a1a_10px,#1a1a1a_20px)] opacity-80" style={{ bottom: '60px' }} />
+        <div className="absolute left-0 right-0 h-6 bg-[repeating-linear-gradient(-45deg,#f59e0b,#f59e0b_10px,#1a1a1a_10px,#1a1a1a_20px)] opacity-80" style={{ bottom: 60 }} />
       </>
     ),
     badgeColor: 'bg-amber-500',
@@ -247,13 +247,71 @@ const OBJECTIVE_OPTIONS = [
 ];
 
 /* ═══════════════════════════════════════════════════════
+   EXPORT CANVAS CONSTANTS & HELPERS
+   ═══════════════════════════════════════════════════════ */
+
+const CANVAS = { feed: { w: 1080, h: 1080 }, story: { w: 1080, h: 1920 } };
+const PREVIEW = { feed: { w: 320, h: 320 }, story: { w: 270, h: 480 } };
+const SAFE_PAD = 48; // 48px safe zone em canvas 1080
+
+/** Porcentagens de zona RÍGIDAS (somam ~100% do espaço interno) */
+const ZONES = {
+  feed:  { header: 13, body: 55, footer: 28, gap: 4 },
+  story: { header: 8,  body: 54, footer: 34, gap: 4 },
+};
+
+function twFs(cls: string): number {
+  if (cls.includes('text-3xl')) return 30;
+  if (cls.includes('text-2xl')) return 24;
+  if (cls.includes('text-xl')) return 20;
+  if (cls.includes('text-base')) return 16;
+  if (cls.includes('text-sm')) return 14;
+  if (cls.includes('text-xs')) return 12;
+  const m = cls.match(/text-\[(\d+)px\]/);
+  if (m) return parseInt(m[1]);
+  return 14;
+}
+
+function twFw(cls: string): number {
+  const m = cls.match(/font-(\d{3})/);
+  return m ? parseInt(m[1]) : 600;
+}
+
+function twColor(cls: string): string {
+  if (cls.includes('text-white/95')) return 'rgba(255,255,255,0.95)';
+  if (cls.includes('text-white/90')) return 'rgba(255,255,255,0.9)';
+  if (cls.includes('text-white/80')) return 'rgba(255,255,255,0.8)';
+  if (cls.includes('text-white')) return '#ffffff';
+  if (cls.includes('text-gray-900')) return '#111827';
+  if (cls.includes('text-gray-800')) return '#1f2937';
+  if (cls.includes('text-black')) return '#000000';
+  return '#ffffff';
+}
+
+function twTracking(cls: string): string | undefined {
+  if (cls.includes('tracking-tight')) return '-0.025em';
+  if (cls.includes('tracking-wider')) return '0.05em';
+  if (cls.includes('tracking-widest')) return '0.1em';
+  const m = cls.match(/tracking-\[([^\]]+)\]/);
+  return m ? m[1] : undefined;
+}
+
+function twRadius(cls: string): string {
+  if (cls.includes('rounded-full')) return '9999px';
+  if (cls.includes('rounded-none')) return '0';
+  if (cls.includes('rounded-sm')) return '4px';
+  return '8px';
+}
+
+
+/* ═══════════════════════════════════════════════════════
    COMPONENTE PRINCIPAL DO ESTÚDIO
    ═══════════════════════════════════════════════════════ */
 
 export default function EstudioPage() {
   const { productId } = useParams<{ productId: string }>();
   const supabase = createClient();
-  const artRef = useRef<HTMLDivElement>(null);
+  const exportRef = useRef<HTMLDivElement>(null);
 
   // Data
   const [product, setProduct] = useState<Product | null>(null);
@@ -276,6 +334,8 @@ export default function EstudioPage() {
   const [copiedCaption, setCopiedCaption] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [loadingData, setLoadingData] = useState(true);
+  const [logoDominantColor, setLogoDominantColor] = useState<string | null>(null);
+  const [logoStyle, setLogoStyle] = useState<LogoStyle | null>(null);
 
   // Load data
   useEffect(() => {
@@ -286,7 +346,7 @@ export default function EstudioPage() {
       if (!cancelled) setUserId(user.id);
       const [{ data: prod }, { data: bk }, { data: usageData }] = await Promise.all([
         supabase.from('products').select('id, name, description, category_id, factory_id, image_url, tags, active, created_at, updated_at, category:categories(id, name, slug, created_at), factory:factories(id, name, logo_url, active, created_at)').eq('id', productId).single(),
-        supabase.from('brand_kits').select('*').eq('user_id', user.id).single(),
+        supabase.from('brand_kits').select('id, user_id, logo_url, primary_color, secondary_color, store_name, instagram_handle, whatsapp').eq('user_id', user.id).single(),
         supabase.rpc('get_usage', { p_user_id: user.id }),
       ]);
       if (!cancelled) {
@@ -298,6 +358,32 @@ export default function EstudioPage() {
     })();
     return () => { cancelled = true; };
   }, [supabase, productId]);
+
+  const primary = brandKit?.primary_color || '#e0604e';
+  const secondary = brandKit?.secondary_color || '#1a1b2e';
+
+  // Extrair cor dominante da logo quando brandKit carrega
+  useEffect(() => {
+    if (!brandKit?.logo_url) return;
+    let cancelled = false;
+    extractDominantColor(brandKit.logo_url)
+      .then(color => { if (!cancelled) setLogoDominantColor(color); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [brandKit?.logo_url]);
+
+  // Recalcular estilo da logo quando template ou cor mudam
+  useEffect(() => {
+    if (!logoDominantColor || !selectedTemplate) {
+      setLogoStyle(null);
+      return;
+    }
+    const bgColor = extractBgColorFromStyle(
+      selectedTemplate.bgStyle(primary, secondary)
+    );
+    const style = getSmartLogoStyle(logoDominantColor, bgColor);
+    setLogoStyle(style);
+  }, [logoDominantColor, selectedTemplate, primary, secondary]);
 
   const isOverLimit = usage ? usage.remaining <= 0 : false;
 
@@ -349,12 +435,11 @@ export default function EstudioPage() {
     }
   };
 
-  // Gerar arte + legenda juntos
+  // Gerar arte + legenda (usa exportRef — nó offscreen em 1080px)
   const handleGenerateAll = async () => {
-    if (!artRef.current || !userId || isOverLimit) return;
+    if (!exportRef.current || !userId || isOverLimit) return;
     setGenerating(true);
     try {
-      // 1. Verificar usage
       const { data: usageResult } = await supabase.rpc('increment_usage', { p_user_id: userId });
       if (usageResult && !usageResult.allowed) {
         setUsage(usageResult as UsageInfo);
@@ -362,17 +447,23 @@ export default function EstudioPage() {
         return;
       }
 
-      // 2. Render canvas to PNG
       const isStory = selectedTemplate?.format === 'story';
-      const dataUrl = await toPng(artRef.current, {
-        width: 1080,
-        height: isStory ? 1920 : 1080,
-        pixelRatio: 1,
+      const exportW = isStory ? CANVAS.story.w : CANVAS.feed.w;
+      const exportH = isStory ? CANVAS.story.h : CANVAS.feed.h;
+
+      // html-to-image: captura APENAS o nó de export offscreen
+      // backgroundColor: null → sem fundo artificial, usa bgStyle do template
+      const dataUrl = await toPng(exportRef.current, {
+        width: exportW,
+        height: exportH,
+        pixelRatio: 2,
+        cacheBust: true,
+        backgroundColor: null as unknown as string,
       });
 
-      // 3. Upload (Cloudinary com fallback Supabase)
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
+      // Upload (Cloudinary com fallback Supabase)
+      const fetchRes = await fetch(dataUrl);
+      const blob = await fetchRes.blob();
       const filename = `${userId}/${Date.now()}.png`;
       let imageUrl = dataUrl;
       try {
@@ -383,10 +474,10 @@ export default function EstudioPage() {
       }
       setGeneratedImageUrl(imageUrl);
 
-      // 4. Gerar IA copy em paralelo (não bloqueia)
+      // Gerar IA copy em paralelo (não bloqueia)
       handleGenerateAiCaption();
 
-      // 5. Salvar no histórico
+      // Salvar no histórico
       await supabase.from('generations').insert({
         user_id: userId,
         product_id: product?.id,
@@ -410,7 +501,8 @@ export default function EstudioPage() {
   const handleDownload = () => {
     if (!generatedImageUrl) return;
     const link = document.createElement('a');
-    link.download = `arte-${product?.name?.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.png`;
+    const safeName = product?.name?.replace(/[^a-zA-Z0-9\u00C0-\u00FA]/g, '-').replace(/-+/g, '-').toLowerCase() || 'arte';
+    link.download = `${safeName}-${selectedTemplate?.format || 'feed'}-${Date.now()}.png`;
     link.href = generatedImageUrl;
     link.click();
   };
@@ -432,9 +524,283 @@ export default function EstudioPage() {
   };
 
   const inputClass = 'w-full px-4 py-3 bg-dark-950 border border-dark-700/50 rounded-xl text-white placeholder:text-dark-500 focus:outline-none focus:border-brand-500/50 transition-all text-sm';
-  const primary = brandKit?.primary_color || '#e0604e';
-  const secondary = brandKit?.secondary_color || '#1a1b2e';
   const tpl = selectedTemplate || VISUAL_TEMPLATES[0];
+  const fmt = tpl.format;
+  const canvasW = CANVAS[fmt].w;
+  const canvasH = CANVAS[fmt].h;
+  const previewW = PREVIEW[fmt].w;
+  const previewH = PREVIEW[fmt].h;
+  const previewScale = previewW / canvasW;
+  const S = canvasW / 320; // fator de escala preview → canvas (~3.375)
+
+
+  /* ─── Art content render (shared by preview + export) ─── */
+  const renderArtContent = () => {
+    const nameFs = Math.round(twFs(tpl.nameClass) * S);
+    const nameFw = twFw(tpl.nameClass);
+    const nameColor = twColor(tpl.nameClass);
+    const nameTracking = twTracking(tpl.nameClass);
+    const nameUpper = tpl.nameClass.includes('uppercase');
+    const nameCenter = tpl.nameClass.includes('text-center');
+    const nameShadow = tpl.nameClass.includes('drop-shadow') ? '0 2px 4px rgba(0,0,0,0.5)' : undefined;
+
+    const priceFs = Math.round(twFs(tpl.priceClass) * S);
+    const priceFw = twFw(tpl.priceClass);
+    const priceTracking = twTracking(tpl.priceClass);
+    const priceMono = tpl.priceClass.includes('font-mono');
+
+    const ctaFs = Math.round(twFs(tpl.ctaClass) * S);
+    const ctaFw = twFw(tpl.ctaClass);
+    const ctaUpper = tpl.ctaClass.includes('uppercase');
+    const ctaTracking = twTracking(tpl.ctaClass);
+    const ctaRadius = twRadius(tpl.ctaClass);
+    const ctaBorder = tpl.ctaClass.includes('border') ? '2px solid' : undefined;
+    const ctaBorderColor = tpl.ctaClass.includes('border-white/30') ? 'rgba(255,255,255,0.3)'
+      : tpl.ctaClass.includes('border-white/20') ? 'rgba(255,255,255,0.2)'
+      : tpl.ctaClass.includes('border-purple-500/30') ? 'rgba(139,92,246,0.3)'
+      : tpl.ctaClass.includes('border-gray-900') ? '#111827'
+      : undefined;
+    const ctaTextColor = tpl.ctaClass.includes('text-black') ? '#000000' : '#ffffff';
+    const ctaBackdrop = tpl.ctaClass.includes('backdrop-blur') ? 'blur(8px)' : undefined;
+
+    const isLight = tpl.id === 'minimalista-premium' || tpl.id === 'institucional-clean';
+    const condColor = isLight ? '#4b5563' : 'rgba(255,255,255,0.8)';
+    const contactFs = Math.round(8 * S);
+    const condFs = Math.round(10 * S);
+    const accentRefW = 320;
+    const accentRefH = fmt === 'story' ? Math.round(480 * (320 / 270)) : 320;
+
+    const zone = ZONES[fmt];
+    const innerH = canvasH - SAFE_PAD * 2;
+    const gapPx = Math.round(innerH * zone.gap / 100);
+
+    return (
+      <>
+        {/* Layer 0: Accent elements (decorativos — fora do safe zone, com overflow clipping) */}
+        {tpl.accentElement && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 1,
+            overflow: 'hidden',
+            transformOrigin: 'top left',
+            transform: `scale(${S})`,
+            width: accentRefW, height: accentRefH,
+          }}>
+            {tpl.accentElement(primary, secondary)}
+          </div>
+        )}
+
+        {/* Layer 1: Overlay gradient */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 2, ...tpl.overlayStyle() }} />
+
+        {/* Layer 2: Zone layout rígido com safe zones */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          padding: SAFE_PAD,
+          display: 'flex', flexDirection: 'column',
+          gap: gapPx,
+          zIndex: 3,
+          overflow: 'hidden',
+        }}>
+
+          {/* ══════ HEADER ZONE — Logos ══════ */}
+          <div style={{
+            flex: `0 0 ${zone.header}%`,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+            zIndex: 30,
+            overflow: 'hidden',
+            minHeight: 0,
+          }}>
+            {/* Logo da loja (brand kit) */}
+            {brandKit?.logo_url && (
+              <div style={{
+                maxWidth: '45%',
+                overflow: 'hidden',
+                flexShrink: 0,
+              }}>
+                <img
+                  src={brandKit.logo_url}
+                  alt="Logo"
+                  crossOrigin="anonymous"
+                  style={{
+                    height: Math.round(24 * S),
+                    maxWidth: '100%',
+                    objectFit: 'contain',
+                    filter: logoStyle?.filter || 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))',
+                    display: 'block',
+                  }}
+                />
+              </div>
+            )}
+            {/* Logo da fábrica */}
+            {(product?.factory as Factory)?.logo_url && (
+              <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                maxWidth: '40%',
+                overflow: 'hidden',
+                flexShrink: 0,
+              }}>
+                <div style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  backdropFilter: 'blur(8px)',
+                  borderRadius: Math.round(4 * S),
+                  padding: Math.round(4 * S),
+                  maxWidth: '100%',
+                }}>
+                  <img
+                    src={(product!.factory as Factory).logo_url!}
+                    alt=""
+                    crossOrigin="anonymous"
+                    style={{
+                      height: Math.round(16 * S),
+                      maxWidth: Math.round(100 * S),
+                      objectFit: 'contain',
+                      display: 'block',
+                    }}
+                  />
+                </div>
+                <span style={{
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: Math.round(5 * S),
+                  marginTop: Math.round(2 * S),
+                  fontWeight: 500,
+                }}>Produto oficial</span>
+              </div>
+            )}
+          </div>
+
+          {/* ══════ BODY ZONE — Imagem do produto ══════ */}
+          <div style={{
+            flex: `0 0 ${zone.body}%`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            overflow: 'hidden',
+            zIndex: 10,
+            minHeight: 0,
+          }}>
+            {product?.image_url && (
+              <img
+                src={product.image_url}
+                alt=""
+                crossOrigin="anonymous"
+                style={{
+                  maxWidth: '85%',
+                  maxHeight: '95%',
+                  objectFit: 'contain',
+                  filter: tpl.productImgClass.includes('drop-shadow') ? 'drop-shadow(0 8px 24px rgba(0,0,0,0.4))' : undefined,
+                  display: 'block',
+                }}
+              />
+            )}
+          </div>
+
+          {/* ══════ FOOTER ZONE — Texto + CTA + Contato ══════ */}
+          <div style={{
+            flex: `0 0 ${zone.footer}%`,
+            display: 'flex', flexDirection: 'column',
+            justifyContent: 'flex-end',
+            zIndex: 20,
+            textAlign: nameCenter ? 'center' : 'left',
+            overflow: 'hidden',
+            minHeight: 0,
+          }}>
+            {/* Product name — line-clamp 2 com word break */}
+            <p style={{
+              fontSize: nameFs, fontWeight: nameFw, color: nameColor,
+              letterSpacing: nameTracking,
+              textTransform: nameUpper ? 'uppercase' : undefined,
+              textShadow: nameShadow, lineHeight: 1.2,
+              overflow: 'hidden', display: '-webkit-box',
+              WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+              wordBreak: 'break-word',
+              overflowWrap: 'break-word',
+              margin: 0,
+            }}>
+              {product?.name}
+            </p>
+
+            {/* Preço */}
+            {fields.price && (
+              <p style={{
+                fontSize: priceFs, fontWeight: priceFw,
+                letterSpacing: priceTracking,
+                fontFamily: priceMono ? 'ui-monospace, monospace' : undefined,
+                lineHeight: 1.1, marginTop: Math.round(4 * S),
+                whiteSpace: 'nowrap',
+                overflow: 'hidden', textOverflow: 'ellipsis',
+                ...tpl.priceStyle(secondary),
+              }}>
+                {fields.price}
+              </p>
+            )}
+
+            {/* Condição */}
+            {fields.condition && (
+              <p style={{
+                fontSize: condFs, color: condColor,
+                marginTop: Math.round(2 * S), lineHeight: 1.3,
+                overflow: 'hidden', display: '-webkit-box',
+                WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
+                wordBreak: 'break-word',
+              }}>
+                {fields.condition}
+              </p>
+            )}
+
+            {/* CTA */}
+            {fields.cta && (
+              <div style={{
+                marginTop: Math.round(6 * S),
+                display: 'inline-block',
+                alignSelf: nameCenter ? 'center' : 'flex-start',
+                backgroundColor: tpl.ctaBg(primary),
+                color: ctaTextColor,
+                fontSize: ctaFs, fontWeight: ctaFw,
+                textTransform: ctaUpper ? 'uppercase' : undefined,
+                letterSpacing: ctaTracking, borderRadius: ctaRadius,
+                border: ctaBorder, borderColor: ctaBorderColor,
+                backdropFilter: ctaBackdrop,
+                padding: `${Math.round(5 * S)}px ${Math.round(14 * S)}px`,
+                whiteSpace: 'nowrap',
+                maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                {fields.cta}
+              </div>
+            )}
+
+            {/* Contato */}
+            {(brandKit?.instagram_handle || brandKit?.whatsapp) && (
+              <div style={{
+                marginTop: Math.round(6 * S),
+                textAlign: 'right', alignSelf: 'flex-end',
+                maxWidth: '60%',
+                overflow: 'hidden',
+              }}>
+                {brandKit?.instagram_handle && (
+                  <p style={{
+                    fontSize: contactFs, color: isLight ? '#6b7280' : 'rgba(255,255,255,0.7)',
+                    lineHeight: 1.4, filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))',
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    margin: 0,
+                  }}>
+                    {brandKit.instagram_handle}
+                  </p>
+                )}
+                {brandKit?.whatsapp && (
+                  <p style={{
+                    fontSize: contactFs, color: isLight ? '#6b7280' : 'rgba(255,255,255,0.7)',
+                    lineHeight: 1.4, filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))',
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    margin: 0,
+                  }}>
+                    {brandKit.whatsapp}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  };
 
   if (loadingData) {
     return (
@@ -457,6 +823,27 @@ export default function EstudioPage() {
 
   return (
     <div className="animate-fade-in-up">
+      {/* ══════ OFFSCREEN EXPORT NODE ══════
+          Nó dedicado em tamanho EXATO (1080×1080 ou 1080×1920).
+          position: absolute + clip wrapper (NÃO fixed — Safari bug)
+          overflow: hidden garante que nada vaza do canvas. */}
+      <div aria-hidden="true" style={{
+        position: 'absolute', left: -9999, top: -9999,
+        width: 0, height: 0, overflow: 'hidden',
+        pointerEvents: 'none',
+      }}>
+        <div
+          ref={exportRef}
+          style={{
+            width: canvasW, height: canvasH,
+            position: 'relative', overflow: 'hidden',
+            ...tpl.bgStyle(primary, secondary),
+          }}
+        >
+          {renderArtContent()}
+        </div>
+      </div>
+
       {/* Header */}
       <div className="mb-6">
         <Link href={product.factory_id ? `/dashboard/produtos/${product.factory_id}` : '/dashboard/produtos'}
@@ -525,7 +912,6 @@ export default function EstudioPage() {
                         ? 'border-brand-500/50 bg-brand-600/10 ring-1 ring-brand-500/20'
                         : 'border-dark-800/40 hover:border-dark-700 hover:bg-dark-800/30'
                     }`}>
-                    {/* Mini preview */}
                     <div className={`${t.format === 'story' ? 'aspect-[9/16]' : 'aspect-square'} rounded-lg overflow-hidden mb-2 relative`}
                       style={t.bgStyle(primary, secondary)}>
                       <div className="absolute inset-0 flex items-center justify-center text-2xl">{t.emoji}</div>
@@ -543,7 +929,6 @@ export default function EstudioPage() {
           {step === 2 && (
             <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-6 space-y-4">
               <h2 className="font-display font-700 mb-2">Dados do post</h2>
-
               <div>
                 <label className="block text-sm text-dark-300 mb-1.5">Preço Promocional</label>
                 <input type="text" value={fields.price || ''} onChange={(e) => setFields({ ...fields, price: e.target.value })}
@@ -559,15 +944,10 @@ export default function EstudioPage() {
                 <input type="text" value={fields.cta || ''} onChange={(e) => setFields({ ...fields, cta: e.target.value })}
                   className={inputClass} placeholder="Garanta o seu!" />
               </div>
-
-              {/* Objetivo do Post */}
               <div>
                 <label className="block text-sm text-dark-300 mb-1.5">Objetivo do Post (para a legenda IA)</label>
-                <select
-                  value={captionStyle}
-                  onChange={e => setCaptionStyle(e.target.value as CaptionStyle)}
-                  className={`${inputClass} bg-dark-950`}
-                >
+                <select value={captionStyle} onChange={e => setCaptionStyle(e.target.value as CaptionStyle)}
+                  className={`${inputClass} bg-dark-950`}>
                   {OBJECTIVE_OPTIONS.map(o => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
@@ -576,7 +956,6 @@ export default function EstudioPage() {
                   {OBJECTIVE_OPTIONS.find(o => o.value === captionStyle)?.hint}
                 </p>
               </div>
-
               <button onClick={() => setStep(3)}
                 className="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-600 rounded-xl transition-all">
                 Ver preview →
@@ -584,7 +963,7 @@ export default function EstudioPage() {
             </div>
           )}
 
-          {/* STEP 3: Preview + Gerar Arte e Legenda */}
+          {/* STEP 3: Preview + Gerar */}
           {step === 3 && (
             <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-6 space-y-4">
               <h2 className="font-display font-700 mb-2">Confirme e gere</h2>
@@ -597,7 +976,6 @@ export default function EstudioPage() {
                 {fields.cta && <p>🎯 {fields.cta}</p>}
                 <p>📝 Objetivo: {OBJECTIVE_OPTIONS.find(o => o.value === captionStyle)?.label}</p>
               </div>
-
               <button onClick={handleGenerateAll} disabled={generating || isOverLimit}
                 className="w-full py-4 bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-700 hover:to-purple-700 disabled:opacity-40 text-white font-display font-600 text-lg rounded-xl transition-all flex items-center justify-center gap-3 shadow-lg shadow-brand-600/20">
                 {generating ? (
@@ -612,7 +990,6 @@ export default function EstudioPage() {
           {/* STEP 4: Download + Legenda */}
           {step === 4 && (
             <div className="space-y-4">
-              {/* Download */}
               <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-6">
                 <h2 className="font-display font-700 mb-4 text-brand-400">Arte gerada! 🎉</h2>
                 <button onClick={handleDownload}
@@ -621,7 +998,6 @@ export default function EstudioPage() {
                 </button>
               </div>
 
-              {/* Legenda IA */}
               <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-6 space-y-4">
                 <div className="flex items-center gap-2">
                   <Sparkles size={16} className="text-purple-400" />
@@ -663,7 +1039,6 @@ export default function EstudioPage() {
                   </div>
                 )}
 
-                {/* Legendas automáticas (fallback) */}
                 {caption && !aiCaption && !aiLoading && (
                   <div className="pt-2 border-t border-dark-800/30">
                     <p className="text-[11px] text-dark-500 mb-3">Legendas automáticas (enquanto a IA carrega):</p>
@@ -676,7 +1051,6 @@ export default function EstudioPage() {
                 )}
               </div>
 
-              {/* Ações finais */}
               <div className="flex gap-3">
                 <Link href={product.factory_id ? `/dashboard/produtos/${product.factory_id}` : '/dashboard/produtos'}
                   className="flex-1 py-3 bg-dark-800 hover:bg-dark-700 text-white font-600 rounded-xl transition-all text-center text-sm">
@@ -691,86 +1065,29 @@ export default function EstudioPage() {
           )}
         </div>
 
-        {/* ═════ LADO DIREITO: Preview em tempo real ═════ */}
+        {/* ═════ LADO DIREITO: Preview (CSS transform scale do canvas 1080) ═════ */}
         <div className="lg:sticky lg:top-8 lg:self-start">
           <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-500 text-dark-400">Preview</h3>
-              {selectedTemplate && <span className="text-[10px] text-dark-500">{selectedTemplate.name}</span>}
+              {selectedTemplate && <span className="text-[10px] text-dark-500">{selectedTemplate.name} • {canvasW}×{canvasH}</span>}
             </div>
             <div className="flex justify-center">
-              <div
-                ref={artRef}
-                className="relative overflow-hidden"
-                style={{
-                  width: tpl.format === 'story' ? 270 : 320,
-                  height: tpl.format === 'story' ? 480 : 320,
+              <div style={{ width: previewW, height: previewH, overflow: 'hidden', borderRadius: 8 }}>
+                <div style={{
+                  width: canvasW, height: canvasH,
+                  transform: `scale(${previewScale})`,
+                  transformOrigin: 'top left',
+                  position: 'relative', overflow: 'hidden',
                   ...tpl.bgStyle(primary, secondary),
-                }}
-              >
-                {/* Accent elements */}
-                {tpl.accentElement && tpl.accentElement(primary, secondary)}
-
-                {/* Overlay gradient */}
-                <div className="absolute inset-0" style={tpl.overlayStyle()} />
-
-                {/* Product image */}
-                {product.image_url && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <img src={product.image_url} alt="" className={tpl.productImgClass} />
-                  </div>
-                )}
-
-                {/* Content overlay */}
-                <div className={`absolute ${tpl.format === 'story' ? 'bottom-0 left-0 right-0 p-5 text-center' : 'bottom-0 left-0 right-0 p-4'}`}
-                  style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.6))' }}>
-                  <p className={tpl.nameClass}>{product.name}</p>
-                  {fields.price && (
-                    <p className={tpl.priceClass} style={tpl.priceStyle(secondary)}>
-                      {fields.price}
-                    </p>
-                  )}
-                  {fields.condition && (
-                    <p className={`${tpl.id === 'minimalista-premium' ? 'text-gray-600' : 'text-white/80'} text-[10px] mt-0.5`}>
-                      {fields.condition}
-                    </p>
-                  )}
-                  {fields.cta && (
-                    <div className={`mt-2 inline-block text-white ${tpl.ctaClass}`}
-                      style={{ backgroundColor: tpl.ctaBg(primary) }}>
-                      {fields.cta}
-                    </div>
-                  )}
-                </div>
-
-                {/* Store logo (top-left) */}
-                {brandKit?.logo_url && (
-                  <div className="absolute top-3 left-3">
-                    <img src={brandKit.logo_url} alt="Logo" className="h-8 object-contain drop-shadow" />
-                  </div>
-                )}
-
-                {/* Factory logo (top-right glass badge) */}
-                {(product.factory as Factory)?.logo_url && (
-                  <div className="absolute top-2 right-2 flex flex-col items-center">
-                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-1.5">
-                      <img src={(product.factory as Factory).logo_url!} alt="" className="h-5 object-contain" />
-                    </div>
-                    <span className="text-white/50 text-[5px] mt-0.5 font-500">Produto oficial</span>
-                  </div>
-                )}
-
-                {/* Contact info */}
-                <div className="absolute bottom-2 right-3 text-right">
-                  {brandKit?.instagram_handle && <p className="text-white/70 text-[8px] drop-shadow">{brandKit.instagram_handle}</p>}
-                  {brandKit?.whatsapp && <p className="text-white/70 text-[8px] drop-shadow">{brandKit.whatsapp}</p>}
+                }}>
+                  {renderArtContent()}
                 </div>
               </div>
             </div>
-
             {generatedImageUrl && step === 4 && (
               <div className="mt-4 text-center">
-                <p className="text-xs text-brand-400">✅ Arte final gerada com sucesso</p>
+                <p className="text-xs text-brand-400">✅ Arte final gerada ({canvasW}×{canvasH} @2x)</p>
               </div>
             )}
           </div>
