@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
-import { invokeWithAuth } from '@/hooks/useAuthenticatedFunction';
 import { Bell, X, Check, CheckCheck, Trash2, Loader2 } from 'lucide-react';
 import type { Notification } from '@/types/database';
 
@@ -24,23 +23,43 @@ export default function NotificationBell() {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const fetchUnreadCount = useCallback(async () => {
-    const { data } = await invokeWithAuth<{ unread_count: number }>('notifications', {
-      action: 'unread_count',
-    });
-    if (data?.unread_count !== undefined) setUnreadCount(data.unread_count);
-  }, []);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { count } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('read', false);
+
+      setUnreadCount(count ?? 0);
+    } catch {
+      // Silently fail — notification count is non-critical
+    }
+  }, [supabase]);
 
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
-    const { data } = await invokeWithAuth<{ notifications: Notification[] }>('notifications', {
-      action: 'list',
-      limit: 15,
-    });
-    if (data?.notifications) setNotifications(data.notifications);
-    setLoading(false);
-  }, []);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
 
-  // Poll unread count every 30s — with session guard and cleanup
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(15);
+
+      if (data) setNotifications(data as Notification[]);
+    } catch {
+      // Silently fail
+    }
+    setLoading(false);
+  }, [supabase]);
+
+  // Poll unread count every 30s
   useEffect(() => {
     let cancelled = false;
 
@@ -62,15 +81,9 @@ export default function NotificationBell() {
 
   // Fetch full list when panel opens
   useEffect(() => {
-    let cancelled = false;
-
-    if (open && !cancelled) {
+    if (open) {
       fetchNotifications();
     }
-
-    return () => {
-      cancelled = true;
-    };
   }, [open, fetchNotifications]);
 
   // Close on click outside
@@ -85,20 +98,33 @@ export default function NotificationBell() {
   }, [open]);
 
   const markRead = async (id: string) => {
-    await invokeWithAuth('notifications', { action: 'mark_read', notification_id: id });
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', id);
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     setUnreadCount(prev => Math.max(0, prev - 1));
   };
 
   const markAllRead = async () => {
-    await invokeWithAuth('notifications', { action: 'mark_all_read' });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', user.id)
+      .eq('read', false);
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     setUnreadCount(0);
   };
 
   const deleteNotification = async (id: string) => {
     const notif = notifications.find(n => n.id === id);
-    await invokeWithAuth('notifications', { action: 'delete', notification_id: id });
+    await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', id);
     setNotifications(prev => prev.filter(n => n.id !== id));
     if (notif && !notif.read) setUnreadCount(prev => Math.max(0, prev - 1));
   };

@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
-import { invokeWithAuth } from '@/hooks/useAuthenticatedFunction';
 import Link from 'next/link';
 import {
   Factory, Package, Users, Clock, TrendingUp,
@@ -14,33 +13,28 @@ import {
    TYPES
    ═══════════════════════════════════════ */
 
-interface FabricanteData {
-  has_factory: boolean;
-  factory: {
-    id: string;
-    name: string;
-    logo_url: string | null;
-    active: boolean;
-  } | null;
-  stats: {
-    total_products: number;
-    active_products: number;
-    total_followers: number;
-    pending_requests: number;
-    total_generations: number;
-  };
-  recent_followers: Array<{
-    id: string;
-    status: string;
-    requested_at: string;
-    profiles: { full_name: string | null; avatar_url: string | null };
-  }>;
-  top_products: Array<{
-    product_id: string;
-    product_name: string;
-    image_url: string | null;
-    generation_count: number;
-  }>;
+interface FactoryInfo {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  active: boolean;
+}
+
+interface FollowerRow {
+  id: string;
+  status: string;
+  requested_at: string;
+  responded_at: string | null;
+  lojista_id: string;
+  profiles: { full_name: string | null; avatar_url: string | null } | null;
+}
+
+interface FabricanteStats {
+  total_products: number;
+  active_products: number;
+  total_followers: number;
+  pending_requests: number;
+  total_generations: number;
 }
 
 /* ═══════════════════════════════════════
@@ -49,7 +43,16 @@ interface FabricanteData {
 
 export default function FabricanteDashboard({ userName }: { userName: string }) {
   const supabase = createClient();
-  const [data, setData] = useState<FabricanteData | null>(null);
+  const [factory, setFactory] = useState<FactoryInfo | null>(null);
+  const [hasFactory, setHasFactory] = useState(true);
+  const [stats, setStats] = useState<FabricanteStats>({
+    total_products: 0, active_products: 0, total_followers: 0,
+    pending_requests: 0, total_generations: 0,
+  });
+  const [recentFollowers, setRecentFollowers] = useState<FollowerRow[]>([]);
+  const [topProducts, setTopProducts] = useState<Array<{
+    product_id: string; product_name: string; image_url: string | null; generation_count: number;
+  }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -58,39 +61,157 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
     setLoading(true);
     setError(null);
 
-    const { data: result, error: fnError } = await invokeWithAuth<FabricanteData>('fabricante-stats');
-    if (fnError) {
-      setError(fnError);
-    } else {
-      setData(result);
-    }
-    setLoading(false);
-  }, []);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setError('Sessão expirada. Faça login novamente.'); setLoading(false); return; }
 
-  // Guard de sessão + cleanup para evitar chamadas duplicadas
+      // 1. Get factory
+      const { data: factoryData } = await supabase
+        .from('factories')
+        .select('id, name, logo_url, active')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!factoryData) {
+        setHasFactory(false);
+        setLoading(false);
+        return;
+      }
+
+      setFactory(factoryData);
+      setHasFactory(true);
+      const factoryId = factoryData.id;
+
+      // 2. Count products
+      const { count: totalProducts } = await supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .eq('factory_id', factoryId);
+
+      const { count: activeProducts } = await supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .eq('factory_id', factoryId)
+        .eq('active', true);
+
+      // 3. Count followers
+      const { count: totalFollowers } = await supabase
+        .from('factory_followers')
+        .select('*', { count: 'exact', head: true })
+        .eq('factory_id', factoryId)
+        .eq('status', 'approved');
+
+      const { count: pendingRequests } = await supabase
+        .from('factory_followers')
+        .select('*', { count: 'exact', head: true })
+        .eq('factory_id', factoryId)
+        .eq('status', 'pending');
+
+      // 4. Count generations from factory products
+      const { data: productIds } = await supabase
+        .from('products')
+        .select('id')
+        .eq('factory_id', factoryId);
+
+      let totalGenerations = 0;
+      if (productIds && productIds.length > 0) {
+        const ids = productIds.map(p => p.id);
+        const { count } = await supabase
+          .from('generations')
+          .select('*', { count: 'exact', head: true })
+          .in('product_id', ids);
+        totalGenerations = count ?? 0;
+      }
+
+      setStats({
+        total_products: totalProducts ?? 0,
+        active_products: activeProducts ?? 0,
+        total_followers: totalFollowers ?? 0,
+        pending_requests: pendingRequests ?? 0,
+        total_generations: totalGenerations,
+      });
+
+      // 5. Recent followers (last 5)
+      const { data: followers } = await supabase
+        .from('factory_followers')
+        .select(`
+          id, status, requested_at, responded_at, lojista_id,
+          profiles:lojista_id(full_name, avatar_url)
+        `)
+        .eq('factory_id', factoryId)
+        .order('requested_at', { ascending: false })
+        .limit(5);
+
+      setRecentFollowers((followers as unknown as FollowerRow[]) ?? []);
+
+      // 6. Top products by generation count (simple query)
+      if (productIds && productIds.length > 0) {
+        const ids = productIds.map(p => p.id);
+        const { data: genCounts } = await supabase
+          .from('generations')
+          .select('product_id')
+          .in('product_id', ids);
+
+        if (genCounts) {
+          const countMap: Record<string, number> = {};
+          genCounts.forEach(g => {
+            countMap[g.product_id] = (countMap[g.product_id] || 0) + 1;
+          });
+
+          const { data: prods } = await supabase
+            .from('products')
+            .select('id, name, image_url')
+            .in('id', Object.keys(countMap));
+
+          if (prods) {
+            const sorted = prods
+              .map(p => ({
+                product_id: p.id,
+                product_name: p.name,
+                image_url: p.image_url,
+                generation_count: countMap[p.id] || 0,
+              }))
+              .sort((a, b) => b.generation_count - a.generation_count)
+              .slice(0, 5);
+            setTopProducts(sorted);
+          }
+        }
+      }
+
+    } catch (err) {
+      console.error('FabricanteDashboard error:', err);
+      setError('Erro ao carregar dados. Tente novamente.');
+    }
+
+    setLoading(false);
+  }, [supabase]);
+
   useEffect(() => {
     let cancelled = false;
-
     const run = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session || cancelled) return;
+      if (cancelled) return;
       await fetchData();
     };
-
     run();
     return () => { cancelled = true; };
-  }, [fetchData, supabase]);
+  }, [fetchData]);
 
   const handleFollowerAction = async (followerId: string, action: 'approve' | 'reject') => {
     setActionLoading(followerId);
-    const { error: fnError } = await invokeWithAuth('manage-followers', {
-      action,
-      follower_id: followerId,
-    });
-    if (fnError) {
-      setError(fnError);
-    } else {
-      await fetchData();
+    try {
+      const newStatus = action === 'approve' ? 'approved' : 'rejected';
+      const { error: updateError } = await supabase
+        .from('factory_followers')
+        .update({ status: newStatus, responded_at: new Date().toISOString() })
+        .eq('id', followerId);
+
+      if (updateError) {
+        setError(updateError.message);
+      } else {
+        await fetchData();
+      }
+    } catch {
+      setError('Erro ao processar solicitação.');
     }
     setActionLoading(null);
   };
@@ -115,8 +236,7 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
     );
   }
 
-  // No factory created yet
-  if (!data?.has_factory) {
+  if (!hasFactory) {
     return (
       <div className="animate-fade-in-up">
         <div className="text-center py-16 bg-dark-900/40 border border-dark-800/30 rounded-3xl">
@@ -136,37 +256,13 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
     );
   }
 
-  const stats = data.stats;
-
   const statCards = [
-    {
-      label: 'Produtos',
-      value: stats.total_products,
-      icon: Package,
-      color: 'text-blue-400',
-      bg: 'bg-blue-600/10',
-    },
-    {
-      label: 'Seguidores',
-      value: stats.total_followers,
-      icon: Users,
-      color: 'text-green-400',
-      bg: 'bg-green-600/10',
-    },
-    {
-      label: 'Pendentes',
-      value: stats.pending_requests,
-      icon: Clock,
+    { label: 'Produtos', value: stats.total_products, icon: Package, color: 'text-blue-400', bg: 'bg-blue-600/10' },
+    { label: 'Seguidores', value: stats.total_followers, icon: Users, color: 'text-green-400', bg: 'bg-green-600/10' },
+    { label: 'Pendentes', value: stats.pending_requests, icon: Clock,
       color: stats.pending_requests > 0 ? 'text-amber-400' : 'text-dark-500',
-      bg: stats.pending_requests > 0 ? 'bg-amber-600/10' : 'bg-dark-800/30',
-    },
-    {
-      label: 'Posts Gerados',
-      value: stats.total_generations,
-      icon: TrendingUp,
-      color: 'text-brand-400',
-      bg: 'bg-brand-600/10',
-    },
+      bg: stats.pending_requests > 0 ? 'bg-amber-600/10' : 'bg-dark-800/30' },
+    { label: 'Posts Gerados', value: stats.total_generations, icon: TrendingUp, color: 'text-brand-400', bg: 'bg-brand-600/10' },
   ];
 
   return (
@@ -178,9 +274,7 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
             <Factory className="text-blue-400" size={24} />
             {userName ? `Olá, ${userName}!` : 'Painel do Fabricante'}
           </h1>
-          <p className="text-dark-400 text-sm mt-1">
-            Gestão de catálogo e performance de revenda
-          </p>
+          <p className="text-dark-400 text-sm mt-1">Gestão de catálogo e performance de revenda</p>
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-900/80 border border-dark-800/50 rounded-full self-start sm:self-auto">
           <Factory size={14} className="text-blue-400" />
@@ -189,19 +283,19 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
       </div>
 
       {/* Factory info */}
-      {data.factory && (
+      {factory && (
         <div className="flex items-center gap-4 p-4 bg-dark-900/60 border border-dark-800/40 rounded-2xl">
           <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center p-2 flex-shrink-0">
-            {data.factory.logo_url ? (
-              <img src={data.factory.logo_url} alt={data.factory.name} className="max-w-full max-h-full object-contain" />
+            {factory.logo_url ? (
+              <img src={factory.logo_url} alt={factory.name} className="max-w-full max-h-full object-contain" />
             ) : (
               <Factory size={20} className="text-slate-300" />
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-700 text-white truncate">{data.factory.name}</p>
+            <p className="text-sm font-700 text-white truncate">{factory.name}</p>
             <p className="text-xs text-dark-400 mt-0.5">
-              {data.factory.active ? 'Ativa' : 'Inativa'} &middot; {stats.total_products} produto{stats.total_products !== 1 ? 's' : ''}
+              {factory.active ? 'Ativa' : 'Inativa'} &middot; {stats.total_products} produto{stats.total_products !== 1 ? 's' : ''}
             </p>
           </div>
         </div>
@@ -215,9 +309,7 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
               <card.icon size={18} className={card.color} />
               <span className="text-xs text-dark-400 font-500">{card.label}</span>
             </div>
-            <p className={`text-2xl font-800 ${card.color}`}>
-              {card.value.toLocaleString('pt-BR')}
-            </p>
+            <p className={`text-2xl font-800 ${card.color}`}>{card.value.toLocaleString('pt-BR')}</p>
           </div>
         ))}
       </div>
@@ -236,20 +328,17 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
             )}
           </h2>
 
-          {data.recent_followers.filter((f) => f.status === 'pending').length === 0 ? (
+          {recentFollowers.filter((f) => f.status === 'pending').length === 0 ? (
             <div className="text-center py-8">
               <Users size={32} className="mx-auto text-dark-600 mb-3" />
               <p className="text-dark-500 text-xs">Nenhuma solicitação pendente</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {data.recent_followers
+              {recentFollowers
                 .filter((f) => f.status === 'pending')
                 .map((follower) => (
-                  <div
-                    key={follower.id}
-                    className="flex items-center gap-3 p-3 bg-dark-950/50 border border-dark-800/30 rounded-xl"
-                  >
+                  <div key={follower.id} className="flex items-center gap-3 p-3 bg-dark-950/50 border border-dark-800/30 rounded-xl">
                     <div className="w-9 h-9 rounded-full bg-dark-800 border border-dark-700 flex items-center justify-center overflow-hidden flex-shrink-0">
                       {follower.profiles?.avatar_url ? (
                         <img src={follower.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -272,11 +361,7 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
                         className="p-2 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 hover:bg-green-500/20 transition-all disabled:opacity-50"
                         title="Aprovar"
                       >
-                        {actionLoading === follower.id ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <Check size={14} />
-                        )}
+                        {actionLoading === follower.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                       </button>
                       <button
                         onClick={() => handleFollowerAction(follower.id, 'reject')}
@@ -300,19 +385,15 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
             Top 5 Produtos Mais Usados
           </h2>
 
-          {data.top_products.length === 0 ? (
+          {topProducts.length === 0 ? (
             <div className="text-center py-8">
               <ImageIcon size={32} className="mx-auto text-dark-600 mb-3" />
               <p className="text-dark-500 text-xs">Nenhuma geração registrada ainda</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {data.top_products.map((product, index) => (
-                <div
-                  key={product.product_id}
-                  className="flex items-center gap-3 p-3 bg-dark-950/50 border border-dark-800/30 rounded-xl"
-                >
-                  {/* Rank */}
+              {topProducts.map((product, index) => (
+                <div key={product.product_id} className="flex items-center gap-3 p-3 bg-dark-950/50 border border-dark-800/30 rounded-xl">
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-800 flex-shrink-0 ${
                     index === 0 ? 'bg-brand-600/20 text-brand-400' :
                     index === 1 ? 'bg-blue-600/20 text-blue-400' :
@@ -320,8 +401,6 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
                   }`}>
                     {index + 1}
                   </div>
-
-                  {/* Product image */}
                   <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center p-1 flex-shrink-0">
                     {product.image_url ? (
                       <img src={product.image_url} alt={product.product_name} className="max-w-full max-h-full object-contain" />
@@ -329,8 +408,6 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
                       <Package size={16} className="text-slate-300" />
                     )}
                   </div>
-
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-700 text-white truncate">{product.product_name}</p>
                     <p className="text-[10px] text-dark-500">
@@ -361,7 +438,7 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
         </Link>
 
         <Link
-          href="/dashboard/produtos"
+          href="/dashboard/setores"
           className="flex items-center gap-4 p-4 bg-dark-900/60 border border-dark-800/40 rounded-2xl hover:border-brand-500/30 transition-all group"
         >
           <div className="p-3 rounded-xl bg-brand-600/15">
