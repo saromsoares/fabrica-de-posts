@@ -11,7 +11,7 @@ const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/dashboard/brand-kit', icon: Palette, label: 'Brand Kit' },
   { href: '/dashboard/produtos', icon: Package, label: 'Catálogo' },
-  { href: '/dashboard/historico', icon: Clock, label: 'Histórico' },
+  { href: '/dashboard/historico', icon: Clock, label: 'Minhas Artes' },
   { href: '/dashboard/conta', icon: User, label: 'Conta' },
 ];
 

@@ -2,116 +2,265 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
-import { Zap, Clock, Image, Star } from 'lucide-react';
 import Link from 'next/link';
-import type { UsageInfo, Generation } from '@/types/database';
+import {
+  LayoutDashboard, Sparkles, Package, Clock, Palette,
+  Image as ImageIcon, TrendingUp, Zap, ArrowRight,
+} from 'lucide-react';
 
-export default function DashboardPage() {
-  const [usage, setUsage] = useState<UsageInfo | null>(null);
-  const [recentGenerations, setRecentGenerations] = useState<Generation[]>([]);
+/* ═══════════════════════════════════════
+   TYPES
+   ═══════════════════════════════════════ */
+
+interface DashboardStats {
+  totalArtes: number;
+  totalProdutos: number;
+  artesEsteMes: number;
+  hasBrandKit: boolean;
+}
+
+interface RecentGeneration {
+  id: string;
+  image_url: string | null;
+  format: string;
+  created_at: string;
+  product: { name: string; image_url: string | null } | null;
+}
+
+/* ═══════════════════════════════════════
+   COMPONENT
+   ═══════════════════════════════════════ */
+
+export default function DashboardHome() {
   const supabase = createClient();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recent, setRecent] = useState<RecentGeneration[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [userName, setUserName] = useState<string>('');
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Buscar usage
-      const { data: usageData } = await supabase.rpc('get_usage', { p_user_id: user.id });
-      if (usageData) setUsage(usageData as UsageInfo);
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-      // Últimas gerações
-      const { data: gens } = await supabase
-        .from('generations')
-        .select('id, user_id, product_id, template_id, image_url, caption, fields_data, format, created_at, product:products(name), template:templates(name)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(6);
-      if (gens) setRecentGenerations(gens as Generation[]);
+      const [
+        { count: totalArtes },
+        { count: totalProdutos },
+        { count: artesEsteMes },
+        { data: brandKit },
+        { data: profile },
+        { data: recentData },
+      ] = await Promise.all([
+        supabase.from('generations').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('products').select('id', { count: 'exact', head: true }),
+        supabase.from('generations').select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .gte('created_at', monthStart),
+        supabase.from('brand_kits').select('id').eq('user_id', user.id).maybeSingle(),
+        supabase.from('profiles').select('full_name').eq('id', user.id).single(),
+        supabase.from('generations')
+          .select('id, image_url, format, created_at, product:products(name, image_url)')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(4),
+      ]);
+
+      if (!cancelled) {
+        setStats({
+          totalArtes: totalArtes || 0,
+          totalProdutos: totalProdutos || 0,
+          artesEsteMes: artesEsteMes || 0,
+          hasBrandKit: !!brandKit,
+        });
+        setRecent((recentData as unknown as RecentGeneration[]) || []);
+        setUserName(profile?.full_name?.split(' ')[0] || user.email?.split('@')[0] || '');
+        setLoading(false);
+      }
     })();
+    return () => { cancelled = true; };
   }, [supabase]);
 
-  const usagePercent = usage ? Math.round((usage.count / usage.limit) * 100) : 0;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  const statCards = [
+    {
+      label: 'Artes Geradas',
+      value: stats?.totalArtes || 0,
+      icon: ImageIcon,
+      color: 'text-brand-400',
+      bg: 'bg-brand-600/10',
+    },
+    {
+      label: 'Este Mês',
+      value: stats?.artesEsteMes || 0,
+      icon: TrendingUp,
+      color: 'text-green-400',
+      bg: 'bg-green-600/10',
+    },
+    {
+      label: 'Produtos',
+      value: stats?.totalProdutos || 0,
+      icon: Package,
+      color: 'text-blue-400',
+      bg: 'bg-blue-600/10',
+    },
+    {
+      label: 'Brand Kit',
+      value: stats?.hasBrandKit ? 'Ativo' : 'Pendente',
+      icon: Palette,
+      color: stats?.hasBrandKit ? 'text-purple-400' : 'text-amber-400',
+      bg: stats?.hasBrandKit ? 'bg-purple-600/10' : 'bg-amber-600/10',
+      href: '/dashboard/brand-kit',
+    },
+  ];
 
   return (
-    <div className="animate-fade-in-up">
-      <h1 className="font-display text-3xl font-800 tracking-tight mb-8">Dashboard</h1>
+    <div className="animate-fade-in-up space-y-8">
+      {/* Greeting */}
+      <div>
+        <h1 className="font-display text-2xl font-800 tracking-tight">
+          <LayoutDashboard className="inline -mt-1 mr-2 text-brand-400" size={24} />
+          {userName ? `Olá, ${userName}!` : 'Dashboard'}
+        </h1>
+        <p className="text-dark-400 text-sm mt-1">
+          Visão geral da sua fábrica de posts
+        </p>
+      </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-        <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-600/10 flex items-center justify-center">
-              <Image size={20} className="text-brand-400" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((card) => {
+          const content = (
+            <div
+              className={`${card.bg} border border-dark-800/30 rounded-2xl p-4 ${card.href ? 'hover:border-dark-700/50 transition-all cursor-pointer' : ''}`}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <card.icon size={18} className={card.color} />
+                <span className="text-xs text-dark-400 font-500">{card.label}</span>
+              </div>
+              <p className={`text-2xl font-800 ${card.color}`}>
+                {typeof card.value === 'number' ? card.value.toLocaleString('pt-BR') : card.value}
+              </p>
             </div>
-            <span className="text-sm text-dark-400">Artes este mês</span>
-          </div>
-          <div className="font-display text-3xl font-800">{usage?.count ?? 0}<span className="text-lg text-dark-500">/{usage?.limit ?? 5}</span></div>
-          <div className="mt-3 h-2 bg-dark-800 rounded-full overflow-hidden">
-            <div className="h-full bg-brand-500 rounded-full transition-all" style={{ width: `${Math.min(usagePercent, 100)}%` }} />
-          </div>
-        </div>
+          );
+          return card.href ? (
+            <Link key={card.label} href={card.href}>{content}</Link>
+          ) : (
+            <div key={card.label}>{content}</div>
+          );
+        })}
+      </div>
 
-        <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600/10 flex items-center justify-center">
-              <Zap size={20} className="text-emerald-400" />
-            </div>
-            <span className="text-sm text-dark-400">Restantes</span>
+      {/* Quick actions */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Link
+          href="/dashboard/produtos"
+          className="flex items-center gap-4 p-4 bg-dark-900/60 border border-dark-800/40 rounded-2xl hover:border-brand-500/30 transition-all group"
+        >
+          <div className="p-3 rounded-xl bg-brand-600/15">
+            <Sparkles size={20} className="text-brand-400" />
           </div>
-          <div className="font-display text-3xl font-800">{usage?.remaining ?? 5}</div>
-        </div>
+          <div className="flex-1">
+            <p className="text-sm font-700 text-white">Gerar Nova Arte</p>
+            <p className="text-xs text-dark-400 mt-0.5">Escolha um produto e crie um post</p>
+          </div>
+          <ArrowRight size={16} className="text-dark-600 group-hover:text-brand-400 transition-colors" />
+        </Link>
 
-        <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-violet-600/10 flex items-center justify-center">
-              <Star size={20} className="text-violet-400" />
-            </div>
-            <span className="text-sm text-dark-400">Plano</span>
+        <Link
+          href="/dashboard/historico"
+          className="flex items-center gap-4 p-4 bg-dark-900/60 border border-dark-800/40 rounded-2xl hover:border-purple-500/30 transition-all group"
+        >
+          <div className="p-3 rounded-xl bg-purple-600/15">
+            <Clock size={20} className="text-purple-400" />
           </div>
-          <div className="font-display text-3xl font-800 capitalize">{usage?.plan ?? 'free'}</div>
-        </div>
-
-        <Link href="/dashboard/produtos" className="bg-brand-600/10 border border-brand-500/30 rounded-2xl p-5 hover:bg-brand-600/20 transition-all group">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center">
-              <Zap size={20} className="text-white" />
-            </div>
-            <span className="text-sm text-brand-300">Ação rápida</span>
+          <div className="flex-1">
+            <p className="text-sm font-700 text-white">Minhas Artes</p>
+            <p className="text-xs text-dark-400 mt-0.5">Acesse, baixe e compartilhe suas artes</p>
           </div>
-          <div className="font-display text-lg font-700 text-brand-300 group-hover:text-brand-200 transition-colors">Gerar nova arte →</div>
+          <ArrowRight size={16} className="text-dark-600 group-hover:text-purple-400 transition-colors" />
         </Link>
       </div>
 
-      {/* Últimas gerações */}
-      <h2 className="font-display text-xl font-700 mb-4">Últimas gerações</h2>
-      {recentGenerations.length === 0 ? (
-        <div className="bg-dark-900/40 border border-dark-800/40 rounded-2xl p-10 text-center">
-          <div className="text-4xl mb-3">✨</div>
-          <p className="text-dark-400">Nenhuma arte gerada ainda.</p>
-          <Link href="/dashboard/produtos" className="inline-block mt-4 px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-600 rounded-xl transition-all">
-            Criar primeira arte
-          </Link>
+      {/* Últimas artes */}
+      {recent.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-700 text-white flex items-center gap-2">
+              <Zap size={14} className="text-brand-400" />
+              Últimas Artes
+            </h2>
+            <Link
+              href="/dashboard/historico"
+              className="text-xs text-dark-400 hover:text-brand-400 transition-colors"
+            >
+              Ver todas →
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {recent.map((gen) => (
+              <Link
+                key={gen.id}
+                href="/dashboard/historico"
+                className="group bg-dark-900/40 border border-dark-800/30 rounded-xl overflow-hidden hover:border-dark-700/50 transition-all"
+              >
+                <div className="aspect-square bg-dark-950 overflow-hidden">
+                  {gen.image_url ? (
+                    <img
+                      src={gen.image_url}
+                      alt={gen.product?.name || 'Arte'}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageIcon size={24} className="text-dark-700" />
+                    </div>
+                  )}
+                </div>
+                <div className="p-2">
+                  <p className="text-[11px] text-dark-300 font-600 truncate">
+                    {gen.product?.name || 'Produto'}
+                  </p>
+                  <p className="text-[10px] text-dark-500">
+                    {new Date(gen.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {recentGenerations.map((gen) => (
-            <div key={gen.id} className="bg-dark-900/60 border border-dark-800/40 rounded-2xl overflow-hidden group">
-              {gen.image_url ? (
-                <div className="aspect-square bg-dark-800 flex items-center justify-center overflow-hidden">
-                  <img src={gen.image_url} alt="" className="w-full h-full object-cover" />
-                </div>
-              ) : (
-                <div className="aspect-square bg-dark-800 flex items-center justify-center">
-                  <Clock size={24} className="text-dark-600" />
-                </div>
-              )}
-              <div className="p-3">
-                <p className="text-xs text-dark-400 truncate">{(gen.product as {name?: string})?.name || 'Produto'}</p>
-                <p className="text-[10px] text-dark-500 mt-1 capitalize">{gen.format} · {new Date(gen.created_at).toLocaleDateString('pt-BR')}</p>
-              </div>
+      )}
+
+      {/* Onboarding hint */}
+      {!stats?.hasBrandKit && (
+        <div className="bg-amber-600/10 border border-amber-500/20 rounded-2xl p-4">
+          <div className="flex items-start gap-3">
+            <Palette size={20} className="text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-600 text-amber-300">Configure seu Brand Kit</p>
+              <p className="text-xs text-dark-400 mt-1">
+                Adicione sua logo, cores e dados de contato para personalizar todas as artes automaticamente.
+              </p>
+              <Link
+                href="/dashboard/brand-kit"
+                className="inline-flex items-center gap-1.5 mt-2 text-xs text-amber-400 hover:text-amber-300 font-600"
+              >
+                Configurar agora <ArrowRight size={12} />
+              </Link>
             </div>
-          ))}
+          </div>
         </div>
       )}
     </div>
