@@ -58,7 +58,7 @@ export default function AdminFabricasPage() {
   const handleEdit = (factory: FactoryType) => {
     clearMessages();
     setEditingId(factory.id);
-    setForm({ name: factory.name, active: factory.active });
+    setForm({ name: factory.name, active: !!factory.active });
     setLogoPreview(factory.logo_url || null);
     setLogoFile(null);
     setShowForm(true);

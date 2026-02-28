@@ -1,41 +1,35 @@
+// src/types/database.ts
+
 export type Profile = {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
-  role: 'user' | 'admin';
+  role: 'lojista' | 'fabricante' | 'admin';
   plan: 'free' | 'loja' | 'pro';
-  onboarding_complete: boolean;
-  created_at: string;
-  updated_at: string;
+  onboarding_complete: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
 };
 
 export type BrandKit = {
   id: string;
   user_id: string;
   logo_url: string | null;
-  primary_color: string;
-  secondary_color: string;
+  primary_color: string | null;
+  secondary_color: string | null;
   store_name: string | null;
   instagram_handle: string | null;
   whatsapp: string | null;
   font_family: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
 };
 
 export type Category = {
   id: string;
   name: string;
   slug: string;
-  created_at: string;
-};
-
-export type Factory = {
-  id: string;
-  name: string;
-  logo_url: string | null;
-  active: boolean;
-  created_at: string;
+  created_at: string | null;
 };
 
 export type Product = {
@@ -43,26 +37,22 @@ export type Product = {
   name: string;
   description: string | null;
   category_id: string | null;
-  factory_id: string | null;
   image_url: string | null;
-  tags: string[];
-  active: boolean;
-  created_at: string;
-  updated_at: string;
-  category?: Category;
-  factory?: Factory;
+  tags: string[] | null;
+  active: boolean | null;
+  factory_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  category?: Category | null;
+  factory?: Factory | null;
 };
 
-export type TemplateConfig = {
-  // Posições e estilos dos elementos no template
-  productImage: { x: number; y: number; width: number; height: number };
-  logo: { x: number; y: number; width: number; height: number };
-  productName: { x: number; y: number; fontSize: number; color: string; fontWeight: string };
-  price: { x: number; y: number; fontSize: number; color: string; fontWeight: string };
-  cta: { x: number; y: number; fontSize: number; color: string };
-  contact: { x: number; y: number; fontSize: number; color: string };
-  background: { type: 'solid' | 'gradient'; value: string };
-  overlay?: { color: string; opacity: number };
+export type Factory = {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  active: boolean | null;
+  created_at: string | null;
 };
 
 export type Template = {
@@ -70,10 +60,10 @@ export type Template = {
   name: string;
   format: 'feed' | 'story';
   preview_url: string | null;
-  config_json: TemplateConfig;
-  active: boolean;
-  created_at: string;
-  updated_at: string;
+  config_json: Record<string, unknown>;
+  active: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
 };
 
 export type Generation = {
@@ -83,25 +73,29 @@ export type Generation = {
   template_id: string | null;
   image_url: string | null;
   caption: string | null;
-  fields_data: GenerationFields;
+  fields_data: Record<string, unknown> | null;
   format: 'feed' | 'story';
-  created_at: string;
-  product?: Product;
-  template?: Template;
+  created_at: string | null;
 };
 
-export type GenerationFields = {
-  price?: string;
-  condition?: string;
-  cta?: string;
-  customText?: string;
+export type Usage = {
+  id: string;
+  user_id: string;
+  month: string;
+  count: number | null;
 };
 
 export type UsageInfo = {
   count: number;
   limit: number;
-  plan: string;
   remaining: number;
+  plan: string;
 };
 
-export type CaptionStyle = 'oferta' | 'institucional' | 'lancamento' | 'estoque_limitado' | 'beneficio';
+export type CaptionStyle = 'vendas' | 'informativo' | 'engajamento' | 'urgencia' | 'oferta' | 'institucional' | 'lancamento' | 'estoque_limitado' | 'beneficio';
+
+export type GenerationFields = {
+  price?: string;
+  condition?: string;
+  cta?: string;
+};

@@ -123,7 +123,7 @@ export default function AdminProdutosPage() {
       category_id: p.category_id || '',
       factory_id: p.factory_id || '',
       tags: (p.tags || []).join(', '),
-      active: p.active,
+      active: !!p.active,
     });
     setImagePreview(p.image_url || null);
     setImageFile(null);

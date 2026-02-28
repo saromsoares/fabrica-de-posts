@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   Clock, Copy, Check, Trash2, Sparkles,
   Filter, Image as ImageIcon, AlertTriangle, RefreshCw,
-  Eye, X,
+  Eye, X, Zap,
 } from 'lucide-react';
 import ShareButtons from '@/components/ShareButtons';
 
@@ -156,7 +156,7 @@ export default function HistoricoPage() {
 
       {/* Empty state */}
       {!loading && generations.length === 0 && (
-        <div className="text-center py-16">
+        <div className="text-center py-16 bg-dark-900/40 border border-dark-800/30 rounded-3xl">
           <ImageIcon size={48} className="mx-auto text-dark-600 mb-4" />
           <h2 className="text-lg font-600 text-dark-300 mb-2">Nenhuma arte encontrada</h2>
           <p className="text-dark-500 text-sm mb-6">
@@ -173,89 +173,75 @@ export default function HistoricoPage() {
         </div>
       )}
 
-      {/* Grid de artes */}
+      {/* Grid de artes - Padronização Visual 1:1 Fundo Branco */}
       {!loading && generations.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {generations.map((gen) => (
             <div
               key={gen.id}
-              className="group bg-dark-900/60 border border-dark-800/40 rounded-2xl overflow-hidden hover:border-dark-700/60 transition-all"
+              className="group bg-dark-900/60 border border-dark-800/40 rounded-3xl overflow-hidden hover:border-brand-500/30 hover:shadow-[0_0_40px_rgba(224,96,78,0.1)] transition-all duration-500"
             >
-              {/* Thumbnail */}
+              {/* Thumbnail - Padronização Visual: Fundo Branco, 1:1, 80% do produto */}
               <div
-                className="relative aspect-square bg-dark-950 overflow-hidden cursor-pointer"
+                className="relative aspect-square bg-white flex items-center justify-center p-8 cursor-pointer group-hover:bg-white/95 transition-colors"
                 onClick={() => setPreviewGen(gen)}
               >
                 {gen.image_url ? (
                   <img
                     src={gen.image_url}
                     alt={gen.product?.name || 'Arte gerada'}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="max-w-[85%] max-h-[85%] object-contain group-hover:scale-110 transition-transform duration-500 drop-shadow-md"
                     loading="lazy"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
+                  <div className="w-full h-full flex items-center justify-center bg-dark-950">
                     <ImageIcon size={32} className="text-dark-700" />
                   </div>
                 )}
 
-                {/* Overlay com ações rápidas */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                  <div className="p-2 rounded-full bg-white/20 backdrop-blur-sm">
-                    <Eye size={20} className="text-white" />
+                {/* Overlay com ícone de olho */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <div className="p-3 rounded-full bg-dark-900/80 backdrop-blur-md border border-white/10 shadow-2xl">
+                    <Eye size={24} className="text-white" />
                   </div>
                 </div>
 
                 {/* Badge formato */}
-                <span className={`absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-700 uppercase tracking-wider ${
+                <span className={`absolute top-3 left-3 px-2 py-1 rounded-lg text-[9px] font-800 uppercase tracking-wider border border-white/10 ${
                   gen.format === 'story'
-                    ? 'bg-purple-500/80 text-white'
-                    : 'bg-blue-500/80 text-white'
+                    ? 'bg-purple-600/80 text-white'
+                    : 'bg-blue-600/80 text-white'
                 }`}>
                   {gen.format}
                 </span>
 
                 {/* Data */}
-                <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md text-[10px] font-500 bg-black/50 text-white/80 backdrop-blur-sm">
+                <span className="absolute top-3 right-3 px-2 py-1 rounded-lg text-[9px] font-700 bg-dark-900/60 text-white/80 backdrop-blur-md border border-white/10">
                   {fmtDateShort(gen.created_at)}
                 </span>
               </div>
 
               {/* Info */}
-              <div className="p-3 space-y-2">
+              <div className="p-4 space-y-3 border-t border-dark-800/30">
                 {/* Produto */}
                 <div className="flex items-center gap-2">
-                  {gen.product?.image_url && (
-                    <img
-                      src={gen.product.image_url}
-                      alt=""
-                      className="w-6 h-6 rounded-md object-cover flex-shrink-0"
-                    />
-                  )}
-                  <p className="text-xs text-white font-600 truncate flex-1">
+                  <p className="text-xs text-white font-800 truncate flex-1">
                     {gen.product?.name || 'Produto removido'}
                   </p>
                 </div>
 
                 {/* Preço/condição */}
                 {gen.fields_data?.price && (
-                  <p className="text-xs text-brand-400 font-700">
+                  <p className="text-xs text-brand-400 font-800">
                     {gen.fields_data.price}
                     {gen.fields_data.condition && (
-                      <span className="text-dark-400 font-500 ml-1.5">{gen.fields_data.condition}</span>
+                      <span className="text-dark-400 font-600 ml-2 text-[10px] uppercase tracking-wider">{gen.fields_data.condition}</span>
                     )}
                   </p>
                 )}
 
-                {/* Legenda (truncada) */}
-                {gen.caption && (
-                  <p className="text-[11px] text-dark-400 line-clamp-2 leading-relaxed">
-                    {gen.caption}
-                  </p>
-                )}
-
                 {/* Ações */}
-                <div className="flex items-center gap-1.5 pt-1 border-t border-dark-800/30">
+                <div className="flex items-center gap-2 pt-2 border-t border-dark-800/30">
                   {/* Download + WhatsApp (compact) */}
                   {gen.image_url && (
                     <ShareButtons
@@ -270,38 +256,24 @@ export default function HistoricoPage() {
                   {gen.caption && (
                     <button
                       onClick={() => handleCopy(gen.id, gen.caption!)}
-                      className={`p-2 rounded-lg text-xs transition-all ${
+                      className={`p-2.5 rounded-xl text-xs transition-all border ${
                         copiedId === gen.id
-                          ? 'bg-green-600/20 text-green-400'
-                          : 'bg-dark-800/50 text-dark-400 hover:text-white hover:bg-dark-800'
+                          ? 'bg-green-600/20 border-green-500/30 text-green-400'
+                          : 'bg-dark-800/40 border-dark-700/30 text-dark-400 hover:text-white hover:border-dark-600'
                       }`}
                       title="Copiar legenda"
                     >
-                      {copiedId === gen.id ? <Check size={14} /> : <Copy size={14} />}
+                      {copiedId === gen.id ? <Check size={16} /> : <Copy size={16} />}
                     </button>
                   )}
-
-                  {/* Criar variação */}
-                  {gen.product_id && (
-                    <Link
-                      href={`/dashboard/estudio/${gen.product_id}`}
-                      className="p-2 rounded-lg bg-brand-600/10 text-brand-400 hover:bg-brand-600/20 transition-all"
-                      title="Criar variação"
-                    >
-                      <Sparkles size={14} />
-                    </Link>
-                  )}
-
-                  {/* Spacer */}
-                  <div className="flex-1" />
 
                   {/* Deletar */}
                   <button
                     onClick={() => setDeleteId(gen.id)}
-                    className="p-2 rounded-lg text-dark-600 hover:text-red-400 hover:bg-red-600/10 transition-all"
-                    title="Excluir"
+                    className="p-2.5 rounded-xl bg-dark-800/40 border border-dark-700/30 text-dark-400 hover:text-red-400 hover:border-red-500/30 transition-all ml-auto"
+                    title="Deletar"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={16} />
                   </button>
                 </div>
               </div>
@@ -310,144 +282,127 @@ export default function HistoricoPage() {
         </div>
       )}
 
-      {/* ══════ MODAL: Preview Grande ══════ */}
+      {/* Modal de Preview */}
       {previewGen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-          onClick={() => setPreviewGen(null)}
-        >
-          <div
-            className="relative bg-dark-900 border border-dark-800/60 rounded-2xl overflow-hidden max-w-lg w-full max-h-[90vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Fechar */}
-            <button
-              onClick={() => setPreviewGen(null)}
-              className="absolute top-3 right-3 z-10 p-1.5 rounded-full bg-black/60 text-white/80 hover:bg-black/80 hover:text-white transition-all"
-            >
-              <X size={16} />
-            </button>
-
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8">
+          <div className="absolute inset-0 bg-dark-950/90 backdrop-blur-xl" onClick={() => setPreviewGen(null)} />
+          
+          <div className="relative w-full max-w-5xl bg-dark-900 border border-dark-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col lg:flex-row max-h-[90vh]">
             {/* Imagem */}
-            <div className="bg-dark-950 flex-shrink-0">
-              {previewGen.image_url ? (
-                <img
-                  src={previewGen.image_url}
-                  alt=""
-                  className="w-full object-contain max-h-[50vh]"
-                />
-              ) : (
-                <div className="h-48 flex items-center justify-center">
-                  <ImageIcon size={48} className="text-dark-700" />
-                </div>
-              )}
+            <div className="lg:flex-1 bg-white flex items-center justify-center p-8 sm:p-12 relative">
+              <img
+                src={previewGen.image_url!}
+                alt=""
+                className="max-w-full max-h-full object-contain drop-shadow-2xl"
+              />
+              <button
+                onClick={() => setPreviewGen(null)}
+                className="absolute top-4 left-4 p-2 rounded-full bg-dark-900/80 text-white hover:bg-dark-800 transition-all lg:hidden"
+              >
+                <X size={20} />
+              </button>
             </div>
 
             {/* Info */}
-            <div className="p-5 space-y-4 overflow-y-auto">
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 rounded-md text-[10px] font-700 uppercase ${
-                  previewGen.format === 'story' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'
-                }`}>
-                  {previewGen.format}
-                </span>
-                <span className="text-xs text-dark-500">{fmtDate(previewGen.created_at)}</span>
+            <div className="w-full lg:w-[400px] p-6 sm:p-8 flex flex-col border-t lg:border-t-0 lg:border-l border-dark-800 overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-display text-xl font-800 text-white">Detalhes da Arte</h3>
+                <button
+                  onClick={() => setPreviewGen(null)}
+                  className="p-2 rounded-full bg-dark-800 text-dark-400 hover:text-white transition-all hidden lg:block"
+                >
+                  <X size={20} />
+                </button>
               </div>
 
-              <h3 className="text-sm font-700 text-white">
-                {previewGen.product?.name || 'Produto'}
-              </h3>
-
-              {previewGen.fields_data?.price && (
-                <p className="text-brand-400 font-800 text-lg">
-                  {previewGen.fields_data.price}
-                  {previewGen.fields_data.condition && (
-                    <span className="text-dark-400 font-500 text-sm ml-2">{previewGen.fields_data.condition}</span>
-                  )}
-                </p>
-              )}
-
-              {previewGen.caption && (
-                <div className="bg-dark-800/50 rounded-xl p-3">
-                  <p className="text-xs text-dark-300 leading-relaxed whitespace-pre-wrap">
-                    {previewGen.caption}
-                  </p>
-                  <button
-                    onClick={() => handleCopy(previewGen.id, previewGen.caption!)}
-                    className={`mt-2 inline-flex items-center gap-1.5 text-[10px] font-600 transition-all ${
-                      copiedId === previewGen.id ? 'text-green-400' : 'text-dark-500 hover:text-white'
-                    }`}
-                  >
-                    {copiedId === previewGen.id ? <Check size={12} /> : <Copy size={12} />}
-                    {copiedId === previewGen.id ? 'Copiado!' : 'Copiar legenda'}
-                  </button>
+              <div className="space-y-6 flex-1">
+                <div>
+                  <p className="text-[10px] font-800 uppercase tracking-widest text-dark-500 mb-1">Produto</p>
+                  <p className="text-white font-700">{previewGen.product?.name || 'Produto removido'}</p>
                 </div>
-              )}
 
-              {/* Share Buttons */}
-              {previewGen.image_url && (
+                <div className="flex gap-8">
+                  <div>
+                    <p className="text-[10px] font-800 uppercase tracking-widest text-dark-500 mb-1">Formato</p>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-800 uppercase tracking-wider ${
+                      previewGen.format === 'story' ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'
+                    }`}>
+                      {previewGen.format}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-800 uppercase tracking-widest text-dark-500 mb-1">Data</p>
+                    <p className="text-dark-200 text-xs font-600">{fmtDate(previewGen.created_at)}</p>
+                  </div>
+                </div>
+
+                {previewGen.caption && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[10px] font-800 uppercase tracking-widest text-dark-500">Legenda Sugerida</p>
+                      <button
+                        onClick={() => handleCopy(previewGen.id, previewGen.caption!)}
+                        className="text-[10px] font-700 text-brand-400 hover:text-brand-300 flex items-center gap-1"
+                      >
+                        {copiedId === previewGen.id ? <><Check size={10} /> Copiado</> : <><Copy size={10} /> Copiar</>}
+                      </button>
+                    </div>
+                    <div className="p-4 bg-dark-950/50 border border-dark-800 rounded-2xl">
+                      <p className="text-sm text-dark-300 leading-relaxed whitespace-pre-wrap">
+                        {previewGen.caption}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-6 mt-6 border-t border-dark-800 space-y-3">
                 <ShareButtons
-                  imageUrl={previewGen.image_url}
+                  imageUrl={previewGen.image_url!}
                   caption={previewGen.caption || undefined}
                   productName={previewGen.product?.name || undefined}
                 />
-              )}
-
-              {/* Criar variação */}
-              {previewGen.product_id && (
-                <Link
-                  href={`/dashboard/estudio/${previewGen.product_id}`}
-                  className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-brand-600 text-white rounded-xl text-sm font-600 hover:bg-brand-700 transition-all"
-                  onClick={() => setPreviewGen(null)}
-                >
-                  <Sparkles size={16} /> Criar Nova Variação
-                </Link>
-              )}
-
-              {/* Deletar */}
-              <button
-                onClick={() => { setPreviewGen(null); setDeleteId(previewGen.id); }}
-                className="flex items-center justify-center gap-2 w-full px-4 py-2 text-dark-500 hover:text-red-400 text-xs font-500 transition-all"
-              >
-                <Trash2 size={14} /> Excluir esta arte
-              </button>
+                
+                {previewGen.product_id && (
+                  <Link
+                    href={`/dashboard/estudio/${previewGen.product_id}`}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-dark-800 hover:bg-dark-700 text-white text-sm font-700 rounded-2xl transition-all"
+                  >
+                    <Zap size={16} className="text-brand-400" /> Criar Variação
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ══════ MODAL: Confirmação de Delete ══════ */}
+      {/* Modal de Confirmação de Delete */}
       {deleteId && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-          onClick={() => setDeleteId(null)}
-        >
-          <div
-            className="bg-dark-900 border border-dark-800/60 rounded-2xl p-6 max-w-sm w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-full bg-red-600/20">
-                <AlertTriangle size={20} className="text-red-400" />
-              </div>
-              <h3 className="font-700 text-white">Excluir arte?</h3>
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-dark-950/80 backdrop-blur-sm" onClick={() => setDeleteId(null)} />
+          <div className="relative w-full max-w-sm bg-dark-900 border border-dark-800 rounded-3xl p-6 shadow-2xl text-center">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle size={32} className="text-red-500" />
             </div>
-            <p className="text-sm text-dark-400 mb-6">
-              Essa ação não pode ser desfeita. A imagem e a legenda serão removidas permanentemente.
+            <h3 className="text-lg font-800 text-white mb-2">Excluir Arte?</h3>
+            <p className="text-dark-400 text-sm mb-6">
+              Esta ação não pode ser desfeita. A imagem será removida permanentemente do seu histórico.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteId(null)}
-                className="flex-1 px-4 py-2.5 bg-dark-800 text-dark-300 rounded-xl text-sm font-500 hover:bg-dark-700 transition-all"
+                className="flex-1 px-4 py-2.5 bg-dark-800 hover:bg-dark-700 text-white text-sm font-700 rounded-xl transition-all"
+                disabled={deleting}
               >
                 Cancelar
               </button>
               <button
                 onClick={() => handleDelete(deleteId)}
+                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-700 rounded-xl transition-all flex items-center justify-center gap-2"
                 disabled={deleting}
-                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl text-sm font-600 hover:bg-red-700 transition-all disabled:opacity-50"
               >
-                {deleting ? 'Excluindo...' : 'Excluir'}
+                {deleting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Excluir'}
               </button>
             </div>
           </div>

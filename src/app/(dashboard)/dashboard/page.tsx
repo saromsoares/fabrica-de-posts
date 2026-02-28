@@ -6,6 +6,7 @@ import Link from 'next/link';
 import {
   LayoutDashboard, Sparkles, Package, Clock, Palette,
   Image as ImageIcon, TrendingUp, Zap, ArrowRight,
+  Factory, Store, ShieldCheck,
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════
@@ -27,6 +28,8 @@ interface RecentGeneration {
   product: { name: string; image_url: string | null } | null;
 }
 
+type UserRole = 'lojista' | 'fabricante' | 'admin';
+
 /* ═══════════════════════════════════════
    COMPONENT
    ═══════════════════════════════════════ */
@@ -37,6 +40,7 @@ export default function DashboardHome() {
   const [recent, setRecent] = useState<RecentGeneration[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState<string>('');
+  const [userRole, setUserRole] = useState<UserRole>('lojista');
 
   useEffect(() => {
     let cancelled = false;
@@ -61,7 +65,7 @@ export default function DashboardHome() {
           .eq('user_id', user.id)
           .gte('created_at', monthStart),
         supabase.from('brand_kits').select('id').eq('user_id', user.id).maybeSingle(),
-        supabase.from('profiles').select('full_name').eq('id', user.id).single(),
+        supabase.from('profiles').select('full_name, role').eq('id', user.id).single(),
         supabase.from('generations')
           .select('id, image_url, format, created_at, product:products(name, image_url)')
           .eq('user_id', user.id)
@@ -78,6 +82,7 @@ export default function DashboardHome() {
         });
         setRecent((recentData as unknown as RecentGeneration[]) || []);
         setUserName(profile?.full_name?.split(' ')[0] || user.email?.split('@')[0] || '');
+        setUserRole((profile?.role as UserRole) || 'lojista');
         setLoading(false);
       }
     })();
@@ -126,15 +131,40 @@ export default function DashboardHome() {
 
   return (
     <div className="animate-fade-in-up space-y-8">
-      {/* Greeting */}
-      <div>
-        <h1 className="font-display text-2xl font-800 tracking-tight">
-          <LayoutDashboard className="inline -mt-1 mr-2 text-brand-400" size={24} />
-          {userName ? `Olá, ${userName}!` : 'Dashboard'}
-        </h1>
-        <p className="text-dark-400 text-sm mt-1">
-          Visão geral da sua fábrica de posts
-        </p>
+      {/* Greeting & Role Badge */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-800 tracking-tight flex items-center gap-2">
+            <LayoutDashboard className="text-brand-400" size={24} />
+            {userName ? `Olá, ${userName}!` : 'Dashboard'}
+          </h1>
+          <p className="text-dark-400 text-sm mt-1">
+            {userRole === 'fabricante' 
+              ? 'Gestão de catálogo e performance de revenda' 
+              : userRole === 'admin'
+              ? 'Painel de controle administrativo'
+              : 'Visão geral da sua fábrica de posts'}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-900/80 border border-dark-800/50 rounded-full self-start sm:self-auto">
+          {userRole === 'fabricante' ? (
+            <>
+              <Factory size={14} className="text-blue-400" />
+              <span className="text-[10px] font-700 uppercase tracking-wider text-blue-400">Fabricante</span>
+            </>
+          ) : userRole === 'admin' ? (
+            <>
+              <ShieldCheck size={14} className="text-purple-400" />
+              <span className="text-[10px] font-700 uppercase tracking-wider text-purple-400">Administrador</span>
+            </>
+          ) : (
+            <>
+              <Store size={14} className="text-brand-400" />
+              <span className="text-[10px] font-700 uppercase tracking-wider text-brand-400">Lojista</span>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Stats cards */}
@@ -192,7 +222,7 @@ export default function DashboardHome() {
         </Link>
       </div>
 
-      {/* Últimas artes */}
+      {/* Últimas artes - Padronização Visual 1:1 Fundo Branco */}
       {recent.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-4">
@@ -208,32 +238,37 @@ export default function DashboardHome() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {recent.map((gen) => (
               <Link
                 key={gen.id}
                 href="/dashboard/historico"
-                className="group bg-dark-900/40 border border-dark-800/30 rounded-xl overflow-hidden hover:border-dark-700/50 transition-all"
+                className="group bg-dark-900/40 border border-dark-800/30 rounded-2xl overflow-hidden hover:border-dark-700/50 transition-all"
               >
-                <div className="aspect-square bg-dark-950 overflow-hidden">
+                {/* Padronização Visual: Fundo Branco, 1:1, 80% do produto */}
+                <div className="aspect-square bg-white p-4 flex items-center justify-center relative overflow-hidden">
                   {gen.image_url ? (
                     <img
                       src={gen.image_url}
                       alt={gen.product?.name || 'Arte'}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="max-w-[85%] max-h-[85%] object-contain group-hover:scale-110 transition-transform duration-500 drop-shadow-md"
                       loading="lazy"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-full h-full flex items-center justify-center bg-dark-950">
                       <ImageIcon size={24} className="text-dark-700" />
                     </div>
                   )}
+                  {/* Badge de Formato */}
+                  <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-dark-900/60 backdrop-blur-md rounded text-[8px] font-800 uppercase tracking-tighter text-white/80 border border-white/10">
+                    {gen.format}
+                  </div>
                 </div>
-                <div className="p-2">
-                  <p className="text-[11px] text-dark-300 font-600 truncate">
+                <div className="p-3 border-t border-dark-800/30">
+                  <p className="text-[11px] text-dark-200 font-700 truncate">
                     {gen.product?.name || 'Produto'}
                   </p>
-                  <p className="text-[10px] text-dark-500">
+                  <p className="text-[10px] text-dark-500 mt-0.5">
                     {new Date(gen.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                   </p>
                 </div>
