@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
+import { uploadImage } from '@/lib/upload';
 import { toPng } from 'html-to-image';
 import { Download, Copy, Check, Zap, ChevronRight, AlertTriangle, ArrowLeft, Sparkles, RefreshCw } from 'lucide-react';
 import { generateCaption } from '@/lib/captions';
@@ -369,15 +370,16 @@ export default function EstudioPage() {
         pixelRatio: 1,
       });
 
-      // 3. Upload
+      // 3. Upload (Cloudinary com fallback Supabase)
       const res = await fetch(dataUrl);
       const blob = await res.blob();
       const filename = `${userId}/${Date.now()}.png`;
-      const { error: uploadErr } = await supabase.storage.from('generated-arts').upload(filename, blob, { contentType: 'image/png' });
       let imageUrl = dataUrl;
-      if (!uploadErr) {
-        const { data: urlData } = supabase.storage.from('generated-arts').getPublicUrl(filename);
-        imageUrl = urlData.publicUrl;
+      try {
+        const result = await uploadImage(blob, 'fabrica/generated-arts', filename, { contentType: 'image/png' });
+        imageUrl = result.url;
+      } catch (err) {
+        console.error('Upload fallback para dataUrl:', err);
       }
       setGeneratedImageUrl(imageUrl);
 

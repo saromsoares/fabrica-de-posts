@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
+import { uploadImage } from '@/lib/upload';
 import { Plus, Pencil, Trash2, X, Upload, AlertCircle, Factory } from 'lucide-react';
 import { extractError } from '@/lib/utils';
 import type { Factory as FactoryType } from '@/types/database';
@@ -82,13 +83,9 @@ export default function AdminFabricasPage() {
 
       if (logoFile) {
         const ext = logoFile.name.split('.').pop()?.toLowerCase() || 'png';
-        const path = `${Date.now()}-${form.name.replace(/\s+/g, '-').toLowerCase()}.${ext}`;
-        const { error: uploadErr } = await supabase.storage
-          .from('factories')
-          .upload(path, logoFile, { contentType: logoFile.type });
-        if (uploadErr) throw new Error(`Erro ao subir logo: ${uploadErr.message}`);
-        const { data: urlData } = supabase.storage.from('factories').getPublicUrl(path);
-        logoUrl = urlData.publicUrl;
+        const filename = `${Date.now()}-${form.name.replace(/\s+/g, '-').toLowerCase()}.${ext}`;
+        const result = await uploadImage(logoFile, 'fabrica/factories', filename, { contentType: logoFile.type });
+        logoUrl = result.url;
       }
 
       const payload: Record<string, unknown> = {

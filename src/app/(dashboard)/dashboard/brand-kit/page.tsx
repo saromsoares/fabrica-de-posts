@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
+import { uploadImage } from '@/lib/upload';
 import { useRouter } from 'next/navigation';
 import { Upload, Check, Palette } from 'lucide-react';
 import type { BrandKit } from '@/types/database';
@@ -57,12 +58,13 @@ export default function BrandKitPage() {
 
       // Upload logo se mudou
       if (logoFile) {
-        const ext = logoFile.name.split('.').pop();
-        const path = `${user.id}/logo.${ext}`;
-        const { error: uploadErr } = await supabase.storage.from('brand-kits').upload(path, logoFile, { upsert: true });
-        if (!uploadErr) {
-          const { data: urlData } = supabase.storage.from('brand-kits').getPublicUrl(path);
-          logoUrl = urlData.publicUrl;
+        const ext = logoFile.name.split('.').pop() || 'png';
+        const filename = `${user.id}/logo.${ext}`;
+        try {
+          const result = await uploadImage(logoFile, 'fabrica/brand-kits', filename, { contentType: logoFile.type, upsert: true });
+          logoUrl = result.url;
+        } catch (err) {
+          console.error('Erro no upload da logo:', err);
         }
       }
 

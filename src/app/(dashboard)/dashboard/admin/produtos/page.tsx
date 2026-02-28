@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
+import { uploadImage } from '@/lib/upload';
 import { Plus, Pencil, Trash2, X, Upload, AlertCircle, CheckCircle, Package } from 'lucide-react';
 import { extractError } from '@/lib/utils';
 import type { Product, Category, Factory } from '@/types/database';
@@ -160,13 +161,9 @@ export default function AdminProdutosPage() {
       if (imageFile) {
         const ext = imageFile.name.split('.').pop()?.toLowerCase() || 'png';
         const safeName = form.name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
-        const path = `${Date.now()}-${safeName}.${ext}`;
-        const { error: upErr } = await supabase.storage
-          .from('products')
-          .upload(path, imageFile, { contentType: imageFile.type });
-        if (upErr) throw new Error(`Erro no upload: ${upErr.message}`);
-        const { data: urlData } = supabase.storage.from('products').getPublicUrl(path);
-        imageUrl = urlData.publicUrl;
+        const filename = `${Date.now()}-${safeName}.${ext}`;
+        const result = await uploadImage(imageFile, 'fabrica/products', filename, { contentType: imageFile.type });
+        imageUrl = result.url;
       }
 
       const payload = {
