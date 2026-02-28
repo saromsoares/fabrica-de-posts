@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   Clock, Copy, Check, Trash2, Sparkles,
   Filter, Image as ImageIcon, AlertTriangle, RefreshCw,
-  Eye, X, Zap,
+  Eye, X, Zap, Pencil, Save, Loader2,
 } from 'lucide-react';
 import ShareButtons from '@/components/ShareButtons';
 
@@ -43,6 +43,11 @@ export default function HistoricoPage() {
   const [deleting, setDeleting] = useState(false);
   const [previewGen, setPreviewGen] = useState<Generation | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Caption editing state
+  const [editingCaptionId, setEditingCaptionId] = useState<string | null>(null);
+  const [editCaptionText, setEditCaptionText] = useState('');
+  const [savingCaption, setSavingCaption] = useState(false);
 
   /* ── Fetch generations ── */
   const fetchGenerations = useCallback(async () => {
@@ -86,6 +91,43 @@ export default function HistoricoPage() {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  /* ── Edit caption ── */
+  const startEditCaption = (gen: Generation) => {
+    setEditingCaptionId(gen.id);
+    setEditCaptionText(gen.caption || '');
+  };
+
+  const cancelEditCaption = () => {
+    setEditingCaptionId(null);
+    setEditCaptionText('');
+  };
+
+  const saveCaption = async (genId: string) => {
+    setSavingCaption(true);
+
+    const { error } = await supabase
+      .from('generations')
+      .update({ caption: editCaptionText, updated_at: new Date().toISOString() })
+      .eq('id', genId);
+
+    if (!error) {
+      // Update local state
+      setGenerations((prev) =>
+        prev.map((g) =>
+          g.id === genId ? { ...g, caption: editCaptionText } : g
+        )
+      );
+      // Update preview if open
+      if (previewGen?.id === genId) {
+        setPreviewGen((prev) => prev ? { ...prev, caption: editCaptionText } : null);
+      }
+    }
+
+    setEditingCaptionId(null);
+    setEditCaptionText('');
+    setSavingCaption(false);
   };
 
   /* ── Format date ── */
@@ -173,7 +215,7 @@ export default function HistoricoPage() {
         </div>
       )}
 
-      {/* Grid de artes - Padronização Visual 1:1 Fundo Branco */}
+      {/* Grid de artes */}
       {!loading && generations.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {generations.map((gen) => (
@@ -181,7 +223,7 @@ export default function HistoricoPage() {
               key={gen.id}
               className="group bg-dark-900/60 border border-dark-800/40 rounded-3xl overflow-hidden hover:border-brand-500/30 hover:shadow-[0_0_40px_rgba(224,96,78,0.1)] transition-all duration-500"
             >
-              {/* Thumbnail - Padronização Visual: Fundo Branco, 1:1, 80% do produto */}
+              {/* Thumbnail */}
               <div
                 className="relative aspect-square bg-white flex items-center justify-center p-8 cursor-pointer group-hover:bg-white/95 transition-colors"
                 onClick={() => setPreviewGen(gen)}
@@ -199,7 +241,7 @@ export default function HistoricoPage() {
                   </div>
                 )}
 
-                {/* Overlay com ícone de olho */}
+                {/* Overlay */}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                   <div className="p-3 rounded-full bg-dark-900/80 backdrop-blur-md border border-white/10 shadow-2xl">
                     <Eye size={24} className="text-white" />
@@ -223,14 +265,12 @@ export default function HistoricoPage() {
 
               {/* Info */}
               <div className="p-4 space-y-3 border-t border-dark-800/30">
-                {/* Produto */}
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-white font-800 truncate flex-1">
                     {gen.product?.name || 'Produto removido'}
                   </p>
                 </div>
 
-                {/* Preço/condição */}
                 {gen.fields_data?.price && (
                   <p className="text-xs text-brand-400 font-800">
                     {gen.fields_data.price}
@@ -242,7 +282,6 @@ export default function HistoricoPage() {
 
                 {/* Ações */}
                 <div className="flex items-center gap-2 pt-2 border-t border-dark-800/30">
-                  {/* Download + WhatsApp (compact) */}
                   {gen.image_url && (
                     <ShareButtons
                       imageUrl={gen.image_url}
@@ -267,6 +306,15 @@ export default function HistoricoPage() {
                     </button>
                   )}
 
+                  {/* Editar legenda */}
+                  <button
+                    onClick={() => startEditCaption(gen)}
+                    className="p-2.5 rounded-xl bg-dark-800/40 border border-dark-700/30 text-dark-400 hover:text-blue-400 hover:border-blue-500/30 transition-all"
+                    title="Editar legenda"
+                  >
+                    <Pencil size={16} />
+                  </button>
+
                   {/* Deletar */}
                   <button
                     onClick={() => setDeleteId(gen.id)}
@@ -285,7 +333,7 @@ export default function HistoricoPage() {
       {/* Modal de Preview */}
       {previewGen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8">
-          <div className="absolute inset-0 bg-dark-950/90 backdrop-blur-xl" onClick={() => setPreviewGen(null)} />
+          <div className="absolute inset-0 bg-dark-950/90 backdrop-blur-xl" onClick={() => { setPreviewGen(null); cancelEditCaption(); }} />
           
           <div className="relative w-full max-w-5xl bg-dark-900 border border-dark-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col lg:flex-row max-h-[90vh]">
             {/* Imagem */}
@@ -296,7 +344,7 @@ export default function HistoricoPage() {
                 className="max-w-full max-h-full object-contain drop-shadow-2xl"
               />
               <button
-                onClick={() => setPreviewGen(null)}
+                onClick={() => { setPreviewGen(null); cancelEditCaption(); }}
                 className="absolute top-4 left-4 p-2 rounded-full bg-dark-900/80 text-white hover:bg-dark-800 transition-all lg:hidden"
               >
                 <X size={20} />
@@ -308,7 +356,7 @@ export default function HistoricoPage() {
               <div className="flex items-center justify-between mb-6">
                 <h3 className="font-display text-xl font-800 text-white">Detalhes da Arte</h3>
                 <button
-                  onClick={() => setPreviewGen(null)}
+                  onClick={() => { setPreviewGen(null); cancelEditCaption(); }}
                   className="p-2 rounded-full bg-dark-800 text-dark-400 hover:text-white transition-all hidden lg:block"
                 >
                   <X size={20} />
@@ -336,24 +384,66 @@ export default function HistoricoPage() {
                   </div>
                 </div>
 
-                {previewGen.caption && (
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-[10px] font-800 uppercase tracking-widest text-dark-500">Legenda Sugerida</p>
-                      <button
-                        onClick={() => handleCopy(previewGen.id, previewGen.caption!)}
-                        className="text-[10px] font-700 text-brand-400 hover:text-brand-300 flex items-center gap-1"
-                      >
-                        {copiedId === previewGen.id ? <><Check size={10} /> Copiado</> : <><Copy size={10} /> Copiar</>}
-                      </button>
-                    </div>
-                    <div className="p-4 bg-dark-950/50 border border-dark-800 rounded-2xl">
-                      <p className="text-sm text-dark-300 leading-relaxed whitespace-pre-wrap">
-                        {previewGen.caption}
-                      </p>
+                {/* Caption section with edit */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] font-800 uppercase tracking-widest text-dark-500">Legenda</p>
+                    <div className="flex items-center gap-2">
+                      {editingCaptionId === previewGen.id ? (
+                        <>
+                          <button
+                            onClick={cancelEditCaption}
+                            className="text-[10px] font-700 text-dark-400 hover:text-white flex items-center gap-1"
+                          >
+                            <X size={10} /> Cancelar
+                          </button>
+                          <button
+                            onClick={() => saveCaption(previewGen.id)}
+                            disabled={savingCaption}
+                            className="text-[10px] font-700 text-green-400 hover:text-green-300 flex items-center gap-1 disabled:opacity-50"
+                          >
+                            {savingCaption ? <Loader2 size={10} className="animate-spin" /> : <Save size={10} />}
+                            Salvar
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => startEditCaption(previewGen)}
+                            className="text-[10px] font-700 text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                          >
+                            <Pencil size={10} /> Editar
+                          </button>
+                          {previewGen.caption && (
+                            <button
+                              onClick={() => handleCopy(previewGen.id, previewGen.caption!)}
+                              className="text-[10px] font-700 text-brand-400 hover:text-brand-300 flex items-center gap-1"
+                            >
+                              {copiedId === previewGen.id ? <><Check size={10} /> Copiado</> : <><Copy size={10} /> Copiar</>}
+                            </button>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
-                )}
+
+                  {editingCaptionId === previewGen.id ? (
+                    <textarea
+                      value={editCaptionText}
+                      onChange={(e) => setEditCaptionText(e.target.value)}
+                      rows={6}
+                      className="w-full p-4 bg-dark-950/50 border border-blue-500/30 rounded-2xl text-sm text-dark-200 leading-relaxed resize-none focus:outline-none focus:border-blue-500/50 transition-all"
+                      placeholder="Digite a legenda..."
+                      autoFocus
+                    />
+                  ) : (
+                    <div className="p-4 bg-dark-950/50 border border-dark-800 rounded-2xl">
+                      <p className="text-sm text-dark-300 leading-relaxed whitespace-pre-wrap">
+                        {previewGen.caption || 'Sem legenda. Clique em "Editar" para adicionar.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="pt-6 mt-6 border-t border-dark-800 space-y-3">
@@ -372,6 +462,49 @@ export default function HistoricoPage() {
                   </Link>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Edição de Legenda (standalone - from grid) */}
+      {editingCaptionId && !previewGen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-dark-950/80 backdrop-blur-sm" onClick={cancelEditCaption} />
+          <div className="relative w-full max-w-lg bg-dark-900 border border-dark-800 rounded-3xl p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-800 text-white flex items-center gap-2">
+                <Pencil size={18} className="text-blue-400" />
+                Editar Legenda
+              </h3>
+              <button onClick={cancelEditCaption} className="p-2 rounded-full bg-dark-800 text-dark-400 hover:text-white transition-all">
+                <X size={18} />
+              </button>
+            </div>
+
+            <textarea
+              value={editCaptionText}
+              onChange={(e) => setEditCaptionText(e.target.value)}
+              rows={8}
+              className="w-full p-4 bg-dark-950/50 border border-dark-800/50 rounded-2xl text-sm text-dark-200 leading-relaxed resize-none focus:outline-none focus:border-blue-500/50 transition-all mb-4"
+              placeholder="Digite a legenda..."
+              autoFocus
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={cancelEditCaption}
+                className="flex-1 px-4 py-2.5 bg-dark-800 hover:bg-dark-700 text-white text-sm font-700 rounded-xl transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => saveCaption(editingCaptionId)}
+                disabled={savingCaption}
+                className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-700 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {savingCaption ? <Loader2 size={16} className="animate-spin" /> : <><Save size={16} /> Salvar</>}
+              </button>
             </div>
           </div>
         </div>

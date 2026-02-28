@@ -10,7 +10,7 @@ import type { Product, Category, Factory as FactoryType } from '@/types/database
 export default function FactoryProductsPage() {
   const { factoryId } = useParams<{ factoryId: string }>();
   const [factory, setFactory] = useState<FactoryType | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<(Product & { category?: Category | null })[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -25,7 +25,7 @@ export default function FactoryProductsPage() {
         supabase.from('categories').select('id, name, slug, created_at').order('name'),
       ]);
       if (fac) setFactory(fac as FactoryType);
-      if (prods) setProducts(prods as Product[]);
+      if (prods) setProducts(prods as (Product & { category?: Category | null })[]);
       if (cats) setCategories(cats as Category[]);
       setLoading(false);
     })();
@@ -130,7 +130,7 @@ export default function FactoryProductsPage() {
               <div className="p-3">
                 <h3 className="font-display font-600 text-sm truncate">{product.name}</h3>
                 {product.category && (
-                  <p className="text-[11px] text-dark-500 mt-0.5">{(product.category as Category).name}</p>
+                  <p className="text-[11px] text-dark-500 mt-0.5">{product.category.name}</p>
                 )}
                 <Link href={`/dashboard/estudio/${product.id}`}
                   className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-600 rounded-xl transition-all duration-200 hover:shadow-[0_0_20px_rgba(224,96,78,0.2)]">

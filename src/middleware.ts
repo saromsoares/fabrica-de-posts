@@ -48,7 +48,8 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Onboarding: forçar Brand Kit se não completou
+  // Onboarding: redirecionar para /onboarding se não completou
+  // Permitir acesso a: /onboarding, /dashboard/brand-kit, /dashboard/admin, /dashboard/conta
   if (user && path.startsWith('/dashboard') && !path.startsWith('/dashboard/brand-kit') && !path.startsWith('/dashboard/admin') && !path.startsWith('/dashboard/conta')) {
     const { data: profile } = await supabase
       .from('profiles')
@@ -57,7 +58,7 @@ export async function middleware(request: NextRequest) {
       .single();
 
     if (profile && !profile.onboarding_complete) {
-      return NextResponse.redirect(new URL('/dashboard/brand-kit', request.url));
+      return NextResponse.redirect(new URL('/onboarding', request.url));
     }
   }
 

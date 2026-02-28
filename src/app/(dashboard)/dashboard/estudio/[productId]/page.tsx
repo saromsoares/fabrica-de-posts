@@ -433,7 +433,7 @@ export default function EstudioPage() {
   const exportRef = useRef<HTMLDivElement>(null);
 
   // Data
-  const [product, setProduct] = useState<Product | null>(null);
+  const [product, setProduct] = useState<(Product & { factory?: Factory | null; category?: Category | null }) | null>(null);
   const [brandKit, setBrandKit] = useState<BrandKit | null>(null);
   const [usage, setUsage] = useState<UsageInfo | null>(null);
 
@@ -471,7 +471,7 @@ export default function EstudioPage() {
         supabase.rpc('get_usage', { p_user_id: user.id }),
       ]);
       if (!cancelled) {
-        if (prod) setProduct(prod as Product);
+        if (prod) setProduct(prod as Product & { factory?: Factory | null; category?: Category | null });
         if (bk) setBrandKit(bk as BrandKit);
         if (usageData) setUsage(usageData as UsageInfo);
         setLoadingData(false);
@@ -516,7 +516,7 @@ export default function EstudioPage() {
       whatsapp: brandKit.whatsapp || undefined,
       instagram: brandKit.instagram_handle || undefined,
       storeName: brandKit.store_name || undefined,
-      category: (product.category as Category)?.slug,
+      category: product.category?.slug,
     });
     setCaption(result);
   }, [product, brandKit, fields, captionStyle]);
@@ -539,7 +539,7 @@ export default function EstudioPage() {
           whatsapp: brandKit.whatsapp || undefined,
           instagram: brandKit.instagram_handle || undefined,
           storeName: brandKit.store_name || undefined,
-          factoryName: (product.factory as Factory)?.name || undefined,
+          factoryName: product.factory?.name || undefined,
           objective: captionStyle,
         }),
       });
@@ -1079,7 +1079,7 @@ export default function EstudioPage() {
             <h1 className="font-display text-2xl font-800 tracking-tight">
               Criar post: <span className="text-brand-500">{product.name}</span>
             </h1>
-            {product.category && <p className="text-sm text-dark-400">{(product.category as Category).name}</p>}
+            {product.category && <p className="text-sm text-dark-400">{product.category.name}</p>}
           </div>
         </div>
       </div>

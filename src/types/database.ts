@@ -126,6 +126,24 @@ export type FabricanteStats = {
   total_generations_from_products: number;
 };
 
+export type CaptionStyle = 'oferta' | 'informativo' | 'urgencia' | 'storytelling' | 'institucional' | 'lancamento' | 'estoque_limitado' | 'beneficio';
+
+export type GenerationFields = {
+  price: string;
+  condition: string;
+  cta: string;
+};
+
+export type UsageInfo = {
+  usage_count: number;
+  usage_limit: number;
+  usage_percentage: number;
+  count: number;
+  limit: number;
+  remaining: number;
+  plan: string;
+};
+
 export type LojistaStats = {
   total_generations: number;
   usage_count: number;

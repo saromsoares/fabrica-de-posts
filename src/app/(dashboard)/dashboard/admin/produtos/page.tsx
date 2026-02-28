@@ -22,7 +22,7 @@ const emptyForm: ProductForm = { name: '', description: '', category_id: '', fac
 export default function AdminProdutosPage() {
   const supabase = createClient();
 
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<(Product & { factory?: Factory | null; category?: Category | null })[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [factories, setFactories] = useState<Factory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,7 +76,7 @@ export default function AdminProdutosPage() {
       if (prodErr) {
         throw prodErr;
       }
-      setProducts((prods || []) as Product[]);
+      setProducts((prods || []) as (Product & { factory?: Factory | null; category?: Category | null })[]);
       setTotalProductCount(prodCount ?? 0);
     } catch (err) {
       console.error('fetchData error:', err);
@@ -415,7 +415,7 @@ export default function AdminProdutosPage() {
                   <div className="flex-1 min-w-0">
                     <h3 className="font-600 truncate">{p.name}</h3>
                     <p className="text-xs text-dark-500">
-                      {(p.factory as Factory | undefined)?.name || '—'} · {(p.category as Category | undefined)?.name || '—'}
+                      {p.factory?.name || '—'} · {p.category?.name || '—'}
                     </p>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-[11px] font-500 flex-shrink-0 ${p.active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-dark-700 text-dark-400'}`}>
@@ -459,8 +459,8 @@ export default function AdminProdutosPage() {
                         <span className="font-500 truncate">{p.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-dark-400">{(p.factory as Factory | undefined)?.name || '—'}</td>
-                    <td className="px-4 py-3 text-dark-400">{(p.category as Category | undefined)?.name || '—'}</td>
+                    <td className="px-4 py-3 text-dark-400">{p.factory?.name || '—'}</td>
+                     <td className="px-4 py-3 text-dark-400">{p.category?.name || '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2.5 py-1 rounded-full text-[11px] font-500 ${p.active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-dark-700 text-dark-400'}`}>
                         {p.active ? 'Ativo' : 'Off'}
