@@ -1,7 +1,8 @@
+// src/app/(auth)/login/page.tsx
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase-browser';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 
 type UserRole = 'lojista' | 'fabricante';
@@ -16,7 +17,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const supabase = createClient();
+  const supabase = createClientComponentClient();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {

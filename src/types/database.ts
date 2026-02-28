@@ -32,27 +32,29 @@ export type Category = {
   created_at: string | null;
 };
 
+export type Factory = {
+  id: string;
+  name: string;
+  user_id: string | null;
+  logo_url: string | null;
+  description: string | null;
+  website: string | null;
+  whatsapp: string | null;
+  active: boolean | null;
+  created_at: string | null;
+};
+
 export type Product = {
   id: string;
   name: string;
   description: string | null;
   category_id: string | null;
+  factory_id: string | null;
   image_url: string | null;
   tags: string[] | null;
   active: boolean | null;
-  factory_id: string | null;
   created_at: string | null;
   updated_at: string | null;
-  category?: Category | null;
-  factory?: Factory | null;
-};
-
-export type Factory = {
-  id: string;
-  name: string;
-  logo_url: string | null;
-  active: boolean | null;
-  created_at: string | null;
 };
 
 export type Template = {
@@ -76,6 +78,7 @@ export type Generation = {
   fields_data: Record<string, unknown> | null;
   format: 'feed' | 'story';
   created_at: string | null;
+  updated_at: string | null;
 };
 
 export type Usage = {
@@ -85,17 +88,47 @@ export type Usage = {
   count: number | null;
 };
 
-export type UsageInfo = {
-  count: number;
-  limit: number;
-  remaining: number;
-  plan: string;
+export type FactoryFollower = {
+  id: string;
+  factory_id: string;
+  lojista_id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requested_at: string | null;
+  responded_at: string | null;
 };
 
-export type CaptionStyle = 'vendas' | 'informativo' | 'engajamento' | 'urgencia' | 'oferta' | 'institucional' | 'lancamento' | 'estoque_limitado' | 'beneficio';
+// ——— Joined/extended types for frontend convenience ———
 
-export type GenerationFields = {
-  price?: string;
-  condition?: string;
-  cta?: string;
+export type FactoryWithProducts = Factory & {
+  products: Product[];
+};
+
+export type FactoryWithFollowStatus = Factory & {
+  follow_status: FactoryFollower['status'] | null;
+  follower_count?: number;
+};
+
+export type ProductWithFactory = Product & {
+  factories: Pick<Factory, 'id' | 'name' | 'logo_url'> | null;
+  categories: Pick<Category, 'id' | 'name'> | null;
+};
+
+export type GenerationWithProduct = Generation & {
+  products: Pick<Product, 'id' | 'name' | 'image_url'> | null;
+};
+
+// ——— Dashboard stats types ———
+
+export type FabricanteStats = {
+  total_products: number;
+  total_followers: number;
+  pending_requests: number;
+  total_generations_from_products: number;
+};
+
+export type LojistaStats = {
+  total_generations: number;
+  usage_count: number;
+  usage_limit: number;
+  factories_followed: number;
 };
