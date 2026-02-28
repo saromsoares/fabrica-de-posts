@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { toPng } from 'html-to-image';
-import { Download, Copy, Check, Zap, ChevronRight, AlertTriangle, ArrowLeft, Sparkles, RefreshCw } from 'lucide-react';
+import { Download, Copy, Check, Zap, ChevronRight, AlertTriangle, ArrowLeft, Sparkles, RefreshCw, Wand2, Palette } from 'lucide-react';
 import ShareButtons from '@/components/ShareButtons';
 import { generateCaption } from '@/lib/captions';
 import { extractError } from '@/lib/utils';
@@ -13,6 +13,7 @@ import type { Product, BrandKit, Category, Factory, CaptionStyle, UsageInfo, Gen
 import { extractDominantColor } from '@/lib/image-processing';
 import { uploadImage } from '@/lib/upload';
 import { getFontById, loadFont } from '@/lib/fonts';
+import AIGenerationMode from '@/components/studio/AIGenerationMode';
 
 /* ═══════════════════════════════════════════════════════
    10 TEMPLATES VISUAIS PRÉ-PROGRAMADOS
@@ -431,6 +432,9 @@ export default function EstudioPage() {
   const { productId } = useParams<{ productId: string }>();
   const supabase = createClient();
   const exportRef = useRef<HTMLDivElement>(null);
+
+  // Mode toggle: 'visual' = Estúdio Visual (html-to-image), 'ai' = Gerar com IA (Edge Function)
+  const [generationMode, setGenerationMode] = useState<'visual' | 'ai'>('visual');
 
   // Data
   const [product, setProduct] = useState<(Product & { factory?: Factory | null; category?: Category | null }) | null>(null);
@@ -1084,6 +1088,53 @@ export default function EstudioPage() {
         </div>
       </div>
 
+      {/* ══════ MODE TOGGLE ══════ */}
+      <div className="mb-6">
+        <div className="inline-flex bg-dark-900/80 border border-dark-800/60 rounded-2xl p-1 gap-1">
+          <button
+            onClick={() => setGenerationMode('visual')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-600 transition-all ${
+              generationMode === 'visual'
+                ? 'bg-brand-600/20 text-brand-400 border border-brand-500/30'
+                : 'text-dark-400 hover:text-white'
+            }`}
+          >
+            <Palette size={16} />
+            Estúdio Visual
+          </button>
+          <button
+            onClick={() => setGenerationMode('ai')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-600 transition-all ${
+              generationMode === 'ai'
+                ? 'bg-purple-600/20 text-purple-400 border border-purple-500/30'
+                : 'text-dark-400 hover:text-white'
+            }`}
+          >
+            <Wand2 size={16} />
+            Gerar com IA
+          </button>
+        </div>
+        <p className="text-xs text-dark-600 mt-2">
+          {generationMode === 'visual'
+            ? 'Preview instantâneo — você personaliza e exporta a arte localmente.'
+            : 'GPT-4o + DALL-E 3 — a IA gera imagem e legenda com base no template escolhido.'}
+        </p>
+      </div>
+
+      {/* ══════ MODO IA ══════ */}
+      {generationMode === 'ai' && (
+        <AIGenerationMode
+          preselectedProductId={productId}
+          brandKit={brandKit}
+          usage={usage}
+          onUsageUpdate={(u) => setUsage(u)}
+        />
+      )}
+
+      {/* ══════ MODO VISUAL (fluxo original — inalterado) ══════ */}
+      {generationMode === 'visual' && (
+        <>
+
       {/* Usage warning */}
       {isOverLimit && (
         <div className="mb-6 p-4 bg-orange-500/10 border border-orange-500/30 rounded-2xl flex items-center gap-3">
@@ -1414,18 +1465,19 @@ export default function EstudioPage() {
                 </Link>
                 <button onClick={handleReset}
                   className="flex-1 py-3 bg-dark-800 hover:bg-dark-700 text-white font-600 rounded-xl transition-all text-sm">
-                  Criar outra arte
-                </button>
-              </div>
-              <Link href="/dashboard/historico"
-                className="block text-center text-xs text-dark-500 hover:text-brand-400 transition-colors mt-2">
-                Ver todas as artes →
-              </Link>
-            </div>
-          )}
+              Criar outra arte
+            </button>
+          </div>
+          <Link href="/dashboard/historico"
+            className="block text-center text-xs text-dark-500 hover:text-brand-400 transition-colors mt-2">
+            Ver todas as artes →
+          </Link>
         </div>
+        )}
+      </div>
 
         {/* ═════ LADO DIREITO: Preview (CSS transform scale do canvas 1080) ═════ */}
+        {/* Nota: o preview ao lado só faz sentido no modo visual */}
         <div className="lg:sticky lg:top-8 lg:self-start">
           <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
@@ -1455,6 +1507,8 @@ export default function EstudioPage() {
           </div>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }
