@@ -18,6 +18,7 @@ export type BrandKit = {
   store_name: string | null;
   instagram_handle: string | null;
   whatsapp: string | null;
+  font_family: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -12,6 +12,7 @@ import Link from 'next/link';
 import type { Product, BrandKit, Category, Factory, CaptionStyle, UsageInfo, GenerationFields } from '@/types/database';
 import { extractDominantColor } from '@/lib/image-processing';
 import { uploadImage } from '@/lib/upload';
+import { getFontById, loadFont } from '@/lib/fonts';
 
 /* ═══════════════════════════════════════════════════════
    10 TEMPLATES VISUAIS PRÉ-PROGRAMADOS
@@ -369,8 +370,7 @@ const GRID_ROWS = {
   story: '7% 50% 25% 18%',    // 7+50+25+18  = 100%
 };
 
-/** Font stack explícito para export — html-to-image NÃO herda @font-face nem body */
-const EXPORT_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+/** Fallback font → agora vem dinâmico de getFontById(brandKit.font_family) */
 
 /**
  * Fundo escuro padrão seguro — aplicado ATRÁS do bgStyle do template.
@@ -444,6 +444,7 @@ export default function EstudioPage() {
 
   // States
   const [step, setStep] = useState(1);
+  const [templateFilter, setTemplateFilter] = useState<'all' | 'feed' | 'story'>('all');
   const [generating, setGenerating] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [caption, setCaption] = useState<{ short: string; medium: string } | null>(null);
@@ -479,6 +480,13 @@ export default function EstudioPage() {
 
   const primary = brandKit?.primary_color || '#e0604e';
   const secondary = brandKit?.secondary_color || '#1a1b2e';
+
+  // Carregar fonte do brand kit (Google Fonts → <link> no <head>)
+  const brandFont = getFontById(brandKit?.font_family);
+  const exportFont = brandFont.fontFamily;
+  useEffect(() => {
+    loadFont(brandKit?.font_family);
+  }, [brandKit?.font_family]);
 
   // Extrair cor dominante da logo do REVENDEDOR (brandKit)
   // Usada para: smart logo styling + cor dinâmica do CTA
@@ -571,6 +579,8 @@ export default function EstudioPage() {
       // 4. cacheBust: true → evita cache de imagens CORS
       // 5. skipAutoScale: true → usa EXATAMENTE as dimensões do nó
       // 6. filter: ignora nós fora do exportRef (scroll, body styles)
+      // 7. document.fonts.ready → garante que Google Font carregou antes do render
+      await document.fonts.ready;
       const dataUrl = await toPng(exportRef.current, {
         width: exportW,
         height: exportH,
@@ -1011,7 +1021,7 @@ export default function EstudioPage() {
              - width/height EXATOS do canvas
              - FALLBACK_BG como background base (previne branco)
              - Template bgStyle por CIMA do fallback
-             - fontFamily explícito (html-to-image não herda body)
+             - fontFamily explícito via brand kit (html-to-image não herda body)
              - overflow: hidden (nenhum pixel vaza)
       */}
       <div aria-hidden="true" style={{
@@ -1025,7 +1035,7 @@ export default function EstudioPage() {
             height: canvasH,
             position: 'relative',
             overflow: 'hidden',
-            fontFamily: EXPORT_FONT,
+            fontFamily: exportFont,
             // ── DOUBLE BACKGROUND: fallback escuro + template ──
             // O FALLBACK_BG garante que NUNCA haverá branco no export.
             // O bgStyle do template sobrepõe com background opaco.
@@ -1095,9 +1105,28 @@ export default function EstudioPage() {
           {step === 1 && (
             <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-6">
               <h2 className="font-display font-700 mb-1">Escolha o template</h2>
-              <p className="text-dark-500 text-sm mb-4">Veja como seu produto fica em cada estilo. <span className="text-dark-600">9 feed + 5 story</span></p>
+              <p className="text-dark-500 text-sm mb-3">Veja como seu produto fica em cada estilo. <span className="text-dark-600">9 feed + 5 story</span></p>
+
+              {/* Filter tabs */}
+              <div className="flex items-center gap-2 mb-4">
+                {(['all', 'feed', 'story'] as const).map((f) => {
+                  const count = f === 'all' ? VISUAL_TEMPLATES.length
+                    : VISUAL_TEMPLATES.filter(t => t.format === f).length;
+                  return (
+                    <button key={f} onClick={() => setTemplateFilter(f)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-600 transition-all ${
+                        templateFilter === f
+                          ? 'bg-brand-600/20 text-brand-400'
+                          : 'bg-dark-800/50 text-dark-400 hover:text-white hover:bg-dark-800'
+                      }`}>
+                      {f === 'all' ? `Todos (${count})` : f === 'feed' ? `Feed (${count})` : `Story (${count})`}
+                    </button>
+                  );
+                })}
+              </div>
+
               <div className="grid grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1">
-                {VISUAL_TEMPLATES.map((t) => {
+                {VISUAL_TEMPLATES.filter(t => templateFilter === 'all' || t.format === templateFilter).map((t) => {
                   const isStory = t.format === 'story';
                   const miniW = 160;
                   const miniH = isStory ? Math.round(miniW * (1920 / 1080)) : miniW;
@@ -1197,7 +1226,7 @@ export default function EstudioPage() {
                       transform: `scale(${200 / canvasW})`,
                       transformOrigin: 'top left',
                       position: 'relative', overflow: 'hidden',
-                      fontFamily: EXPORT_FONT,
+                      fontFamily: exportFont,
                       background: FALLBACK_BG,
                       ...tpl.bgStyle(primary, secondary),
                     }}>
@@ -1365,7 +1394,7 @@ export default function EstudioPage() {
                   transform: `scale(${previewScale})`,
                   transformOrigin: 'top left',
                   position: 'relative', overflow: 'hidden',
-                  fontFamily: EXPORT_FONT,
+                  fontFamily: exportFont,
                   background: FALLBACK_BG,
                   ...tpl.bgStyle(primary, secondary),
                 }}>
