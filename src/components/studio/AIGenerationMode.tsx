@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
+import { invokeWithAuth } from '@/hooks/useAuthenticatedFunction';
 import {
   Sparkles, ChevronRight, Check, Download, Copy,
   RefreshCw, AlertTriangle, ArrowLeft, Loader2,
@@ -180,17 +181,15 @@ export default function AIGenerationMode({
     setError(null);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('generate-post', {
-        body: {
-          product_id: selectedProductId,
-          format,
-          template_id: selectedTemplate.id,
-          tone,
-          custom_prompt: customPrompt.trim() || undefined,
-        },
+      const { data, error: authError } = await invokeWithAuth<{ success: boolean; generation: { id: string; image_url: string; caption: string; format: string; template_name: string; created_at: string }; usage: { count: number; limit: number; plan: string }; error?: string }>('generate-post', {
+        product_id: selectedProductId,
+        format,
+        template_id: selectedTemplate.id,
+        tone,
+        custom_prompt: customPrompt.trim() || undefined,
       });
 
-      if (fnError) throw new Error(fnError.message || 'Erro na Edge Function');
+      if (authError) throw new Error(authError);
       if (!data?.success) throw new Error(data?.error || 'Erro ao gerar post');
 
       const gen = data.generation;
@@ -199,7 +198,7 @@ export default function AIGenerationMode({
         image_url: gen.image_url,
         caption: gen.caption,
         template_name: gen.template_name || selectedTemplate.name,
-        format: gen.format || format,
+        format: (gen.format || format) as 'feed' | 'story',
       };
 
       setResult(aiResult);

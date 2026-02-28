@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
+import { invokeWithAuth } from '@/hooks/useAuthenticatedFunction';
 import Link from 'next/link';
 import { Loader2, ArrowLeft, Factory as FactoryIcon, CheckCircle, Clock, UserPlus, UserMinus, Search } from 'lucide-react';
 import type { Sector, Factory, FactoryFollower } from '@/types/database';
@@ -69,8 +70,8 @@ export default function SectorFactoriesPage() {
   const handleFollow = async (factoryId: string) => {
     setActionLoading(factoryId);
     try {
-      await supabase.functions.invoke('manage-followers', {
-        body: { action: 'follow', factory_id: factoryId },
+      await invokeWithAuth('manage-followers', {
+        action: 'follow', factory_id: factoryId,
       });
       await loadData();
     } catch (err) {
@@ -82,8 +83,8 @@ export default function SectorFactoriesPage() {
   const handleUnfollow = async (factoryId: string) => {
     setActionLoading(factoryId);
     try {
-      await supabase.functions.invoke('manage-followers', {
-        body: { action: 'unfollow', factory_id: factoryId },
+      await invokeWithAuth('manage-followers', {
+        action: 'unfollow', factory_id: factoryId,
       });
       await loadData();
     } catch (err) {

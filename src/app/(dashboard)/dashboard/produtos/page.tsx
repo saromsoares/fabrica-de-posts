@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
+import { invokeWithAuth } from '@/hooks/useAuthenticatedFunction';
 import {
   Factory, Search, CheckCircle2, Clock, ArrowRight,
   Loader2, UserMinus, AlertCircle,
@@ -74,10 +75,10 @@ export default function ProdutosPage() {
     setError(null);
 
     try {
-      const { error: fnError } = await supabase.functions.invoke('manage-followers', {
-        body: { action: 'follow', factory_id: factoryId },
+      const { error: authErr } = await invokeWithAuth('manage-followers', {
+        action: 'follow', factory_id: factoryId,
       });
-      if (fnError) throw fnError;
+      if (authErr) throw new Error(authErr);
 
       setFactories((prev) =>
         prev.map((f) =>
@@ -96,10 +97,10 @@ export default function ProdutosPage() {
     setError(null);
 
     try {
-      const { error: fnError } = await supabase.functions.invoke('manage-followers', {
-        body: { action: 'unfollow', factory_id: factoryId },
+      const { error: authErr } = await invokeWithAuth('manage-followers', {
+        action: 'unfollow', factory_id: factoryId,
       });
-      if (fnError) throw fnError;
+      if (authErr) throw new Error(authErr);
 
       setFactories((prev) =>
         prev.map((f) =>
