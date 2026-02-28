@@ -237,6 +237,99 @@ const VISUAL_TEMPLATES: VisualTemplate[] = [
     ),
     badgeColor: 'bg-teal-500',
   },
+  {
+    id: 'story-oferta-flash',
+    name: 'Story Oferta Flash',
+    description: 'Urgência vertical, preço gigante',
+    format: 'story',
+    emoji: '🔥',
+    bgStyle: (p, s) => ({ background: `linear-gradient(180deg, ${p} 0%, #0d0d0d 40%, ${s}44 100%)` }),
+    overlayStyle: () => ({ background: 'linear-gradient(transparent 30%, rgba(0,0,0,0.85))' }),
+    productImgClass: 'max-w-[80%] max-h-[50%] object-contain drop-shadow-2xl',
+    priceStyle: () => ({ color: '#FFD700', textShadow: '0 3px 12px rgba(0,0,0,0.6)' }),
+    priceClass: 'text-3xl font-900 tracking-tight',
+    nameClass: 'text-white font-800 text-base text-center leading-tight drop-shadow-lg',
+    ctaBg: () => '#e53e3e',
+    ctaClass: 'text-xs font-700 uppercase tracking-wider px-6 py-2 rounded-full',
+    accentElement: () => (
+      <>
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-yellow-500 to-red-600" />
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-red-600 rounded-full">
+          <span className="text-white text-[10px] font-800 uppercase tracking-wider">🔥 Oferta Flash</span>
+        </div>
+      </>
+    ),
+    badgeColor: 'bg-red-500',
+  },
+  {
+    id: 'story-minimal-claro',
+    name: 'Story Minimal Claro',
+    description: 'Fundo claro, elegante, clean',
+    format: 'story',
+    emoji: '🤍',
+    bgStyle: () => ({ background: '#f8f8f8' }),
+    overlayStyle: () => ({}),
+    productImgClass: 'max-w-[70%] max-h-[45%] object-contain',
+    priceStyle: () => ({ color: '#1a1a1a' }),
+    priceClass: 'text-2xl font-300 tracking-wider',
+    nameClass: 'text-gray-900 font-300 text-sm tracking-widest uppercase text-center',
+    ctaBg: () => '#1a1a1a',
+    ctaClass: 'text-[10px] font-400 uppercase tracking-[0.2em] px-5 py-2 rounded-none border border-gray-900',
+    accentElement: () => (
+      <div className="absolute bottom-20 left-1/2 -translate-x-1/2">
+        <span className="text-gray-400 text-[9px] tracking-[0.3em] uppercase">Deslize para ver mais</span>
+      </div>
+    ),
+    badgeColor: 'bg-gray-400',
+  },
+  {
+    id: 'story-neon-dark',
+    name: 'Story Neon Dark',
+    description: 'Glassmorphism escuro, brilho neon',
+    format: 'story',
+    emoji: '💜',
+    bgStyle: () => ({ background: 'linear-gradient(180deg, #0f0f23 0%, #1e1b4b 40%, #0f0f23 100%)' }),
+    overlayStyle: () => ({ background: 'linear-gradient(transparent 40%, rgba(15,15,35,0.9))' }),
+    productImgClass: 'max-w-[70%] max-h-[45%] object-contain drop-shadow-[0_0_40px_rgba(139,92,246,0.25)]',
+    priceStyle: () => ({ color: '#a78bfa' }),
+    priceClass: 'text-3xl font-700',
+    nameClass: 'text-white/90 font-500 text-sm text-center',
+    ctaBg: () => 'rgba(139,92,246,0.3)',
+    ctaClass: 'text-[10px] font-500 px-5 py-2 rounded-full border border-purple-500/30 backdrop-blur-sm',
+    accentElement: () => (
+      <>
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500 to-transparent" />
+        <div className="absolute top-5 left-1/2 -translate-x-1/2 px-3 py-1 bg-purple-500/20 backdrop-blur-md rounded-full border border-purple-500/30">
+          <span className="text-purple-300 text-[9px] font-600 uppercase tracking-wider">Novo</span>
+        </div>
+        <div className="absolute top-20 right-4 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl" />
+      </>
+    ),
+    badgeColor: 'bg-purple-500',
+  },
+  {
+    id: 'story-gradiente-vibrante',
+    name: 'Story Vibrante',
+    description: 'Gradientes coloridos, energia alta',
+    format: 'story',
+    emoji: '🌈',
+    bgStyle: (p) => ({ background: `linear-gradient(160deg, ${p} 0%, #7c3aed 50%, #ec4899 100%)` }),
+    overlayStyle: () => ({ background: 'linear-gradient(transparent 35%, rgba(0,0,0,0.7))' }),
+    productImgClass: 'max-w-[75%] max-h-[48%] object-contain drop-shadow-2xl',
+    priceStyle: () => ({ color: '#ffffff', textShadow: '0 2px 12px rgba(0,0,0,0.5)' }),
+    priceClass: 'text-3xl font-900',
+    nameClass: 'text-white font-700 text-base text-center drop-shadow',
+    ctaBg: () => 'rgba(255,255,255,0.25)',
+    ctaClass: 'text-xs font-700 uppercase px-6 py-2 rounded-full backdrop-blur-sm border border-white/30',
+    accentElement: () => (
+      <>
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-white/20 backdrop-blur-sm rounded-full">
+          <span className="text-white text-[9px] font-700 uppercase tracking-wider">Imperdível</span>
+        </div>
+      </>
+    ),
+    badgeColor: 'bg-gradient-to-r from-purple-500 to-pink-500',
+  },
 ];
 
 const OBJECTIVE_OPTIONS = [
@@ -1002,7 +1095,7 @@ export default function EstudioPage() {
           {step === 1 && (
             <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-6">
               <h2 className="font-display font-700 mb-1">Escolha o template</h2>
-              <p className="text-dark-500 text-sm mb-4">Veja como seu produto fica em cada estilo.</p>
+              <p className="text-dark-500 text-sm mb-4">Veja como seu produto fica em cada estilo. <span className="text-dark-600">9 feed + 5 story</span></p>
               <div className="grid grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1">
                 {VISUAL_TEMPLATES.map((t) => {
                   const isStory = t.format === 'story';
