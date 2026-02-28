@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
+import { invokeWithAuth } from '@/hooks/useAuthenticatedFunction';
 import Link from 'next/link';
 import {
   Store, Image as ImageIcon, Factory, Clock, Sparkles,
@@ -50,18 +51,28 @@ export default function LojistaDashboard({ userName }: { userName: string }) {
     setLoading(true);
     setError(null);
 
-    try {
-      const { data: result, error: fnError } = await supabase.functions.invoke('lojista-stats');
-      if (fnError) throw fnError;
-      setData(result as LojistaData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar dados.');
-    } finally {
-      setLoading(false);
+    const { data: result, error: fnError } = await invokeWithAuth<LojistaData>('lojista-stats');
+    if (fnError) {
+      setError(fnError);
+    } else {
+      setData(result);
     }
-  }, [supabase]);
+    setLoading(false);
+  }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  // Guard de sessão + cleanup para evitar chamadas duplicadas
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+      await fetchData();
+    };
+
+    run();
+    return () => { cancelled = true; };
+  }, [fetchData, supabase]);
 
   if (loading) {
     return (

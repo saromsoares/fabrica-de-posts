@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
+import { invokeWithAuth } from '@/hooks/useAuthenticatedFunction';
 import Link from 'next/link';
 import {
   Factory, Package, Users, Clock, TrendingUp,
@@ -57,33 +58,41 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
     setLoading(true);
     setError(null);
 
-    try {
-      const { data: result, error: fnError } = await supabase.functions.invoke('fabricante-stats');
-      if (fnError) throw fnError;
-      setData(result as FabricanteData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar dados.');
-    } finally {
-      setLoading(false);
+    const { data: result, error: fnError } = await invokeWithAuth<FabricanteData>('fabricante-stats');
+    if (fnError) {
+      setError(fnError);
+    } else {
+      setData(result);
     }
-  }, [supabase]);
+    setLoading(false);
+  }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  // Guard de sessão + cleanup para evitar chamadas duplicadas
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+      await fetchData();
+    };
+
+    run();
+    return () => { cancelled = true; };
+  }, [fetchData, supabase]);
 
   const handleFollowerAction = async (followerId: string, action: 'approve' | 'reject') => {
     setActionLoading(followerId);
-    try {
-      const { error: fnError } = await supabase.functions.invoke('manage-followers', {
-        body: { action, follower_id: followerId },
-      });
-      if (fnError) throw fnError;
-      // Refresh data
+    const { error: fnError } = await invokeWithAuth('manage-followers', {
+      action,
+      follower_id: followerId,
+    });
+    if (fnError) {
+      setError(fnError);
+    } else {
       await fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro na ação.');
-    } finally {
-      setActionLoading(null);
     }
+    setActionLoading(null);
   };
 
   if (loading) {
