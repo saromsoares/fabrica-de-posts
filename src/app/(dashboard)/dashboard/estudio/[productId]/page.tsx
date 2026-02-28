@@ -254,10 +254,14 @@ const CANVAS = { feed: { w: 1080, h: 1080 }, story: { w: 1080, h: 1920 } };
 const PREVIEW = { feed: { w: 320, h: 320 }, story: { w: 270, h: 480 } };
 const SAFE_PAD = 48; // 48px safe zone em canvas 1080
 
-/** Porcentagens de zona RÍGIDAS (somam ~100% do espaço interno) */
+/**
+ * Proporções de zona com cálculo em PIXELS (não %).
+ * header + footer são fixos; body usa flex:1 → preenche o restante.
+ * Isso GARANTE que header + gap + body + gap + footer = innerH exato.
+ */
 const ZONES = {
-  feed:  { header: 13, body: 55, footer: 28, gap: 4 },
-  story: { header: 8,  body: 54, footer: 34, gap: 4 },
+  feed:  { header: 0.15, footer: 0.30, gap: 0.03 },
+  story: { header: 0.10, footer: 0.34, gap: 0.02 },
 };
 
 function twFs(cls: string): number {
@@ -451,14 +455,16 @@ export default function EstudioPage() {
       const exportW = isStory ? CANVAS.story.w : CANVAS.feed.w;
       const exportH = isStory ? CANVAS.story.h : CANVAS.feed.h;
 
-      // html-to-image: captura APENAS o nó de export offscreen
-      // backgroundColor: null → sem fundo artificial, usa bgStyle do template
+      // html-to-image: captura APENAS o nó de export offscreen.
+      // NÃO passar backgroundColor — o bgStyle do template já está no nó.
+      // Se passasse 'transparent', gera PNG com alpha. Se undefined, html-to-image
+      // usa branco MAS só atrás do nó — como o nó tem bgStyle, fica coberto.
       const dataUrl = await toPng(exportRef.current, {
         width: exportW,
         height: exportH,
         pixelRatio: 2,
         cacheBust: true,
-        backgroundColor: null as unknown as string,
+        includeQueryParams: true,
       });
 
       // Upload (Cloudinary com fallback Supabase)
@@ -572,7 +578,11 @@ export default function EstudioPage() {
 
     const zone = ZONES[fmt];
     const innerH = canvasH - SAFE_PAD * 2;
-    const gapPx = Math.round(innerH * zone.gap / 100);
+    const gapPx = Math.round(innerH * zone.gap);
+    const usableH = innerH - gapPx * 2; // espaço sem gaps
+    const headerPx = Math.round(usableH * zone.header);
+    const footerPx = Math.round(usableH * zone.footer);
+    // body = flex:1 → preenche exatamente usableH - headerPx - footerPx
 
     return (
       <>
@@ -604,7 +614,7 @@ export default function EstudioPage() {
 
           {/* ══════ HEADER ZONE — Logos ══════ */}
           <div style={{
-            flex: `0 0 ${zone.header}%`,
+            flex: `0 0 ${headerPx}px`,
             display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
             zIndex: 30,
             overflow: 'hidden',
@@ -670,7 +680,7 @@ export default function EstudioPage() {
 
           {/* ══════ BODY ZONE — Imagem do produto ══════ */}
           <div style={{
-            flex: `0 0 ${zone.body}%`,
+            flex: '1 1 0',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             overflow: 'hidden',
             zIndex: 10,
@@ -694,7 +704,7 @@ export default function EstudioPage() {
 
           {/* ══════ FOOTER ZONE — Texto + CTA + Contato ══════ */}
           <div style={{
-            flex: `0 0 ${zone.footer}%`,
+            flex: `0 0 ${footerPx}px`,
             display: 'flex', flexDirection: 'column',
             justifyContent: 'flex-end',
             zIndex: 20,
@@ -723,7 +733,7 @@ export default function EstudioPage() {
                 fontSize: priceFs, fontWeight: priceFw,
                 letterSpacing: priceTracking,
                 fontFamily: priceMono ? 'ui-monospace, monospace' : undefined,
-                lineHeight: 1.1, marginTop: Math.round(4 * S),
+                lineHeight: 1.1, margin: 0, marginTop: Math.round(4 * S),
                 whiteSpace: 'nowrap',
                 overflow: 'hidden', textOverflow: 'ellipsis',
                 ...tpl.priceStyle(secondary),
@@ -736,7 +746,7 @@ export default function EstudioPage() {
             {fields.condition && (
               <p style={{
                 fontSize: condFs, color: condColor,
-                marginTop: Math.round(2 * S), lineHeight: 1.3,
+                margin: 0, marginTop: Math.round(2 * S), lineHeight: 1.3,
                 overflow: 'hidden', display: '-webkit-box',
                 WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
                 wordBreak: 'break-word',
@@ -825,11 +835,12 @@ export default function EstudioPage() {
     <div className="animate-fade-in-up">
       {/* ══════ OFFSCREEN EXPORT NODE ══════
           Nó dedicado em tamanho EXATO (1080×1080 ou 1080×1920).
-          position: absolute + clip wrapper (NÃO fixed — Safari bug)
-          overflow: hidden garante que nada vaza do canvas. */}
+          - position: absolute + left negativo (NÃO fixed — Safari bug).
+          - SEM opacity:0 — browser PRECISA pintar as imagens para
+            html-to-image capturá-las no clone.
+          - overflow: hidden no inner garante canvas sem vazamento. */}
       <div aria-hidden="true" style={{
-        position: 'absolute', left: -9999, top: -9999,
-        width: 0, height: 0, overflow: 'hidden',
+        position: 'absolute', left: -99999, top: 0,
         pointerEvents: 'none',
       }}>
         <div
@@ -837,6 +848,7 @@ export default function EstudioPage() {
           style={{
             width: canvasW, height: canvasH,
             position: 'relative', overflow: 'hidden',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
             ...tpl.bgStyle(primary, secondary),
           }}
         >
@@ -1079,6 +1091,7 @@ export default function EstudioPage() {
                   transform: `scale(${previewScale})`,
                   transformOrigin: 'top left',
                   position: 'relative', overflow: 'hidden',
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                   ...tpl.bgStyle(primary, secondary),
                 }}>
                   {renderArtContent()}
