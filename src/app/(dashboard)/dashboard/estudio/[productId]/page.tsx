@@ -9,7 +9,7 @@ import { generateCaption } from '@/lib/captions';
 import { extractError } from '@/lib/utils';
 import Link from 'next/link';
 import type { Product, BrandKit, Category, Factory, CaptionStyle, UsageInfo, GenerationFields } from '@/types/database';
-import { extractDominantColor, getSmartLogoStyle, extractBgColorFromStyle, type LogoStyle } from '@/lib/image-processing';
+import { extractDominantColor } from '@/lib/image-processing';
 import { uploadImage } from '@/lib/upload';
 
 /* ═══════════════════════════════════════════════════════
@@ -259,14 +259,20 @@ const SAFE_PAD = 48; // 48px safe zone em canvas 1080
  * gridTemplateRows com porcentagens que somam EXATAMENTE 100%.
  * Sem gap — cada zona ocupa seu espaço completo sem invasão.
  *
- * ZONA A = Header (logos)            15%  →  ~162px (feed) / ~144px (story)
- * ZONA B = Body (imagem produto)     55%  →  ~594px (feed) / ~960px (story)
- * ZONA C = Info (nome+preço+cond)    15%  →  ~162px (feed) / ~432px (story)
- * ZONA D = Action (CTA+contato)      15%  →  ~162px (feed) / ~384px (story)
+ * ZONA A = Header (logos)            12%  →  ~118px (feed)
+ * ZONA B = Body (imagem produto)     52%  →  ~512px (feed)
+ * ZONA C = Info (nome+preço+cond)    20%  →  ~197px (feed) ← espaço para nome 2-linhas + preço grande
+ * ZONA D = Action (CTA+contato)      16%  →  ~157px (feed)
+ *
+ * MATH: Zona C precisa caber:
+ *   Nome: ~42px × 1.15 lineHeight × 2 linhas = ~97px
+ *   Preço: ~60px × 1.05 lineHeight = ~63px
+ *   Gap: ~10px
+ *   Total: ~170px → 20% de (1080-96) = 197px ✓
  */
 const GRID_ROWS = {
-  feed:  '15% 55% 15% 15%',   // 15+55+15+15 = 100%
-  story: '8% 52% 22% 18%',    // 8+52+22+18  = 100%
+  feed:  '12% 52% 20% 16%',   // 12+52+20+16 = 100%
+  story: '7% 50% 25% 18%',    // 7+50+25+18  = 100%
 };
 
 /** Font stack explícito para export — html-to-image NÃO herda @font-face nem body */
@@ -354,7 +360,6 @@ export default function EstudioPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [loadingData, setLoadingData] = useState(true);
   const [logoDominantColor, setLogoDominantColor] = useState<string | null>(null);
-  const [logoStyle, setLogoStyle] = useState<LogoStyle | null>(null);
 
   // Load data
   useEffect(() => {
@@ -392,18 +397,7 @@ export default function EstudioPage() {
     return () => { cancelled = true; };
   }, [brandKit?.logo_url]);
 
-  // Recalcular estilo da logo quando template ou cor mudam
-  useEffect(() => {
-    if (!logoDominantColor || !selectedTemplate) {
-      setLogoStyle(null);
-      return;
-    }
-    const bgColor = extractBgColorFromStyle(
-      selectedTemplate.bgStyle(primary, secondary)
-    );
-    const style = getSmartLogoStyle(logoDominantColor, bgColor);
-    setLogoStyle(style);
-  }, [logoDominantColor, selectedTemplate, primary, secondary]);
+  // logoDominantColor é usada apenas para CTA dinâmico (ctaDynamicBg)
 
   const isOverLimit = usage ? usage.remaining <= 0 : false;
 
@@ -665,7 +659,8 @@ export default function EstudioPage() {
             overflow: 'hidden',
             minHeight: 0,
           }}>
-            {/* ── SLOT ESQUERDO: Logo da FÁBRICA ── */}
+            {/* ── SLOT ESQUERDO: Logo da FÁBRICA ──
+                Tratamento limpo: apenas drop-shadow adaptativo (dark/light). */}
             {(product?.factory as Factory)?.logo_url ? (
               <div style={{
                 maxWidth: '45%',
@@ -677,44 +672,41 @@ export default function EstudioPage() {
                   alt=""
                   crossOrigin="anonymous"
                   style={{
-                    height: Math.round(22 * S),
+                    height: Math.round(20 * S),
                     maxWidth: '100%',
                     objectFit: 'contain',
-                    filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.4))',
+                    filter: isLight
+                      ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))'
+                      : 'drop-shadow(0 1px 3px rgba(0,0,0,0.5)) drop-shadow(0 0 8px rgba(255,255,255,0.08))',
                     display: 'block',
                   }}
                 />
               </div>
             ) : <div />}
 
-            {/* ── SLOT DIREITO: Logo do REVENDEDOR (brand kit) ── */}
+            {/* ── SLOT DIREITO: Logo do REVENDEDOR (brand kit) ──
+                SEM glass container — logos limpos com drop-shadow apenas.
+                O backdrop-blur criava halos coloridos em templates gradiente. */}
             {brandKit?.logo_url ? (
               <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
                 maxWidth: '40%',
                 overflow: 'hidden',
                 flexShrink: 0,
               }}>
-                <div style={{
-                  background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.08)',
-                  backdropFilter: 'blur(8px)',
-                  borderRadius: Math.round(4 * S),
-                  padding: Math.round(4 * S),
-                  maxWidth: '100%',
-                }}>
-                  <img
-                    src={brandKit.logo_url}
-                    alt="Logo"
-                    crossOrigin="anonymous"
-                    style={{
-                      height: Math.round(18 * S),
-                      maxWidth: Math.round(100 * S),
-                      objectFit: 'contain',
-                      filter: logoStyle?.filter || 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))',
-                      display: 'block',
-                    }}
-                  />
-                </div>
+                <img
+                  src={brandKit.logo_url}
+                  alt="Logo"
+                  crossOrigin="anonymous"
+                  style={{
+                    height: Math.round(20 * S),
+                    maxWidth: '100%',
+                    objectFit: 'contain',
+                    filter: isLight
+                      ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))'
+                      : 'drop-shadow(0 1px 3px rgba(0,0,0,0.5)) drop-shadow(0 0 8px rgba(255,255,255,0.08))',
+                    display: 'block',
+                  }}
+                />
               </div>
             ) : <div />}
           </div>
@@ -752,16 +744,16 @@ export default function EstudioPage() {
               line-clamp 2 no nome, ellipsis no preço e condição */}
           <div style={{
             display: 'flex', flexDirection: 'column',
-            justifyContent: 'center',
+            justifyContent: 'flex-end',
             zIndex: 20,
             textAlign: nameCenter ? 'center' : 'left',
             overflow: 'hidden',
             minHeight: 0,
-            gap: Math.round(3 * S),
+            gap: Math.round(2 * S),
           }}>
-            {/* Product name — bold, max 2 linhas */}
+            {/* Product name — bold, max 2 linhas, capped at 48px canvas */}
             <p style={{
-              fontSize: Math.max(nameFs, Math.round(14 * S)),
+              fontSize: Math.min(Math.max(nameFs, Math.round(12 * S)), Math.round(48)),
               fontWeight: Math.max(nameFw, 600),
               color: nameColor,
               letterSpacing: nameTracking,
@@ -785,7 +777,7 @@ export default function EstudioPage() {
               }}>
                 {fields.price && (
                   <p style={{
-                    fontSize: Math.max(priceFs, Math.round(20 * S)),
+                    fontSize: Math.min(Math.max(priceFs, Math.round(18 * S)), Math.round(72)),
                     fontWeight: Math.max(priceFw, 700),
                     letterSpacing: priceTracking,
                     fontFamily: priceMono ? 'ui-monospace, monospace' : undefined,
