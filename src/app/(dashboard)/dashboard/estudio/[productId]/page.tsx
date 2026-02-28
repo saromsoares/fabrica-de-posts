@@ -449,6 +449,8 @@ export default function EstudioPage() {
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [caption, setCaption] = useState<{ short: string; medium: string } | null>(null);
   const [aiCaption, setAiCaption] = useState<string | null>(null);
+  const [aiCaptionSaved, setAiCaptionSaved] = useState(false);
+  const [generationId, setGenerationId] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [copiedCaption, setCopiedCaption] = useState(false);
@@ -544,6 +546,11 @@ export default function EstudioPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro ao gerar legenda.');
       setAiCaption(data.caption);
+      setAiCaptionSaved(true);
+      // Auto-update no banco quando a IA retorna
+      if (generationId) {
+        await supabase.from('generations').update({ caption: data.caption }).eq('id', generationId);
+      }
     } catch (err) {
       setAiError(extractError(err));
     } finally {
@@ -616,7 +623,7 @@ export default function EstudioPage() {
       handleGenerateAiCaption();
 
       // Salvar no histórico
-      await supabase.from('generations').insert({
+      const { data: genRow } = await supabase.from('generations').insert({
         user_id: userId,
         product_id: product?.id,
         template_id: null,
@@ -624,7 +631,8 @@ export default function EstudioPage() {
         caption: caption?.medium || '',
         fields_data: fields,
         format: selectedTemplate?.format || 'feed',
-      });
+      }).select('id').single();
+      if (genRow) setGenerationId(genRow.id);
 
       if (usageResult) setUsage({ ...usageResult, count: usageResult.count, remaining: usageResult.limit - usageResult.count } as UsageInfo);
       setStep(3);
@@ -651,12 +659,20 @@ export default function EstudioPage() {
     setTimeout(() => setCopiedCaption(false), 2000);
   };
 
+  const handleSaveCaption = async () => {
+    if (!generationId || !aiCaption) return;
+    await supabase.from('generations').update({ caption: aiCaption }).eq('id', generationId);
+    setAiCaptionSaved(true);
+  };
+
   const handleReset = () => {
     setStep(1);
     setSelectedTemplate(null);
     setGeneratedImageUrl(null);
     setCaption(null);
     setAiCaption(null);
+    setAiCaptionSaved(false);
+    setGenerationId(null);
     setAiError(null);
     setFields({ price: '', condition: '', cta: 'Garanta o seu!' });
   };
@@ -1247,11 +1263,27 @@ export default function EstudioPage() {
                   <label className="block text-sm text-dark-300 mb-1.5">Condições de Pagamento</label>
                   <input type="text" value={fields.condition || ''} onChange={(e) => setFields({ ...fields, condition: e.target.value })}
                     className={inputClass} placeholder="12x sem juros, Frete grátis..." />
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {['12x sem juros', 'Frete grátis', 'Pix com desconto', 'À vista', 'Parcele em até 10x', 'Últimas unidades'].map(s => (
+                      <button key={s} type="button" onClick={() => setFields({ ...fields, condition: s })}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-500 transition-all ${fields.condition === s ? 'bg-brand-600/20 text-brand-400' : 'bg-dark-800/50 text-dark-500 hover:text-white hover:bg-dark-800'}`}>
+                        {s}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm text-dark-300 mb-1.5">CTA (chamada para ação)</label>
                   <input type="text" value={fields.cta || ''} onChange={(e) => setFields({ ...fields, cta: e.target.value })}
                     className={inputClass} placeholder="Garanta o seu!" />
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {['Garanta o seu!', 'Compre agora', 'Aproveite!', 'Saiba mais', 'Confira', 'Peça já'].map(s => (
+                      <button key={s} type="button" onClick={() => setFields({ ...fields, cta: s })}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-500 transition-all ${fields.cta === s ? 'bg-brand-600/20 text-brand-400' : 'bg-dark-800/50 text-dark-500 hover:text-white hover:bg-dark-800'}`}>
+                        {s}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm text-dark-300 mb-1.5">Objetivo do Post (para a legenda IA)</label>
@@ -1339,14 +1371,27 @@ export default function EstudioPage() {
                     </div>
                     <textarea
                       value={aiCaption}
-                      onChange={e => setAiCaption(e.target.value)}
+                      onChange={e => { setAiCaption(e.target.value); setAiCaptionSaved(false); }}
                       className="w-full p-4 bg-purple-500/5 border border-purple-500/10 rounded-xl text-sm text-dark-200 resize-y min-h-[120px] focus:outline-none focus:border-purple-500/30"
                       rows={6}
                     />
-                    <button onClick={handleGenerateAiCaption} disabled={aiLoading}
-                      className="mt-2 w-full py-2 bg-dark-800 hover:bg-dark-700 text-dark-300 text-xs font-500 rounded-xl transition-all flex items-center justify-center gap-1.5">
-                      <RefreshCw size={12} /> Gerar outra legenda
-                    </button>
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={handleGenerateAiCaption} disabled={aiLoading}
+                        className="flex-1 py-2 bg-dark-800 hover:bg-dark-700 text-dark-300 text-xs font-500 rounded-xl transition-all flex items-center justify-center gap-1.5">
+                        <RefreshCw size={12} /> Gerar outra
+                      </button>
+                      {!aiCaptionSaved && (
+                        <button onClick={handleSaveCaption}
+                          className="flex-1 py-2 bg-brand-600/20 hover:bg-brand-600/30 text-brand-400 text-xs font-600 rounded-xl transition-all flex items-center justify-center gap-1.5">
+                          <Check size={12} /> Salvar legenda
+                        </button>
+                      )}
+                      {aiCaptionSaved && (
+                        <span className="flex-1 py-2 text-green-400 text-xs font-500 flex items-center justify-center gap-1.5">
+                          <Check size={12} /> Salvo ✓
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
 
