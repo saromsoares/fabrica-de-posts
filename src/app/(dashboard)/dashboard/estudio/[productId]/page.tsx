@@ -998,29 +998,95 @@ export default function EstudioPage() {
         {/* ═════ LADO ESQUERDO: Steps ═════ */}
         <div className="space-y-6">
 
-          {/* STEP 1: Escolher Template */}
+          {/* STEP 1: Escolher Template — Mini-previews com produto real */}
           {step === 1 && (
             <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-6">
               <h2 className="font-display font-700 mb-1">Escolha o template</h2>
-              <p className="text-dark-500 text-sm mb-4">10 estilos visuais. Clique para selecionar.</p>
+              <p className="text-dark-500 text-sm mb-4">Veja como seu produto fica em cada estilo.</p>
               <div className="grid grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1">
-                {VISUAL_TEMPLATES.map((t) => (
-                  <button key={t.id}
-                    onClick={() => { setSelectedTemplate(t); setStep(2); }}
-                    className={`text-left rounded-xl border p-3 transition-all ${
-                      selectedTemplate?.id === t.id
-                        ? 'border-brand-500/50 bg-brand-600/10 ring-1 ring-brand-500/20'
-                        : 'border-dark-800/40 hover:border-dark-700 hover:bg-dark-800/30'
-                    }`}>
-                    <div className={`${t.format === 'story' ? 'aspect-[9/16]' : 'aspect-square'} rounded-lg overflow-hidden mb-2 relative`}
-                      style={t.bgStyle(primary, secondary)}>
-                      <div className="absolute inset-0 flex items-center justify-center text-2xl">{t.emoji}</div>
-                      <div className={`absolute bottom-1 left-1 w-2 h-2 rounded-full ${t.badgeColor}`} />
-                    </div>
-                    <p className="text-sm font-500 truncate">{t.name}</p>
-                    <p className="text-[10px] text-dark-500">{t.description}</p>
-                  </button>
-                ))}
+                {VISUAL_TEMPLATES.map((t) => {
+                  const isStory = t.format === 'story';
+                  const miniW = 160;
+                  const miniH = isStory ? Math.round(miniW * (1920 / 1080)) : miniW;
+                  const miniScale = miniW / 1080;
+                  const tIsLight = t.id === 'minimalista-premium' || t.id === 'institucional-clean';
+                  return (
+                    <button key={t.id}
+                      onClick={() => { setSelectedTemplate(t); setStep(2); }}
+                      className={`text-left rounded-xl border p-2 transition-all ${
+                        selectedTemplate?.id === t.id
+                          ? 'border-brand-500/50 bg-brand-600/10 ring-1 ring-brand-500/20'
+                          : 'border-dark-800/40 hover:border-dark-700 hover:bg-dark-800/30'
+                      }`}>
+                      {/* Mini-preview real */}
+                      <div className="rounded-lg overflow-hidden mb-2 relative" style={{ width: '100%', paddingBottom: isStory ? '177.8%' : '100%' }}>
+                        <div style={{
+                          position: 'absolute', inset: 0, overflow: 'hidden',
+                        }}>
+                          <div style={{
+                            width: 1080, height: isStory ? 1920 : 1080,
+                            transform: `scale(${miniScale})`,
+                            transformOrigin: 'top left',
+                            position: 'relative', overflow: 'hidden',
+                            ...t.bgStyle(primary, secondary),
+                          }}>
+                            {/* Overlay */}
+                            <div style={{ position: 'absolute', inset: 0, zIndex: 2, ...t.overlayStyle() }} />
+                            {/* Produto centralizado */}
+                            {product?.image_url && (
+                              <div style={{
+                                position: 'absolute', inset: 0, zIndex: 3,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}>
+                                <img
+                                  src={product.image_url}
+                                  alt=""
+                                  style={{
+                                    maxWidth: '50%', maxHeight: '40%', objectFit: 'contain',
+                                    filter: t.productImgClass.includes('drop-shadow') ? 'drop-shadow(0 8px 24px rgba(0,0,0,0.4))' : undefined,
+                                  }}
+                                />
+                              </div>
+                            )}
+                            {/* Placeholder texto */}
+                            <div style={{
+                              position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 4,
+                              padding: '80px 48px 120px',
+                            }}>
+                              <div style={{
+                                fontSize: 32, fontWeight: 700, lineHeight: 1.15,
+                                color: tIsLight ? '#111827' : '#ffffff',
+                                textShadow: tIsLight ? undefined : '0 2px 6px rgba(0,0,0,0.5)',
+                                overflow: 'hidden', display: '-webkit-box',
+                                WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
+                              }}>
+                                {product?.name || 'Nome do Produto'}
+                              </div>
+                              <div style={{
+                                fontSize: 48, fontWeight: 800, lineHeight: 1.1,
+                                marginTop: 16,
+                                ...t.priceStyle(secondary),
+                              }}>
+                                R$ 199,90
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-500 truncate">{t.name}</p>
+                          <p className="text-[10px] text-dark-500">{t.description}</p>
+                        </div>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-700 uppercase ${
+                          isStory ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'
+                        }`}>
+                          {t.format}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
