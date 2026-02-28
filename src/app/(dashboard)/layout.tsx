@@ -7,13 +7,42 @@ import Link from 'next/link';
 import { 
   Sparkles, LayoutDashboard, Palette, Package, 
   Image as ImageIcon, User, LogOut, Shield, 
-  Menu, X, Factory, Store 
+  Menu, X, Factory, Store, Grid3X3, FolderOpen,
+  LayoutTemplate, Settings
 } from 'lucide-react';
 import type { Profile } from '@/types/database';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
-const navItems = [
+type NavItem = {
+  href: string;
+  icon: typeof LayoutDashboard;
+  label: string;
+  exact: boolean;
+};
+
+// Navegação do LOJISTA
+const lojistaNav: NavItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
+  { href: '/dashboard/setores', icon: Grid3X3, label: 'Setores', exact: false },
+  { href: '/dashboard/historico', icon: ImageIcon, label: 'Minhas Artes', exact: true },
+  { href: '/dashboard/brand-kit', icon: Palette, label: 'Brand Kit', exact: true },
+  { href: '/dashboard/conta', icon: User, label: 'Conta', exact: true },
+];
+
+// Navegação do FABRICANTE
+const fabricanteNav: NavItem[] = [
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
+  { href: '/dashboard/fabricante/categorias', icon: FolderOpen, label: 'Categorias', exact: true },
+  { href: '/dashboard/fabricante/templates', icon: LayoutTemplate, label: 'Templates', exact: true },
   { href: '/dashboard/produtos', icon: Package, label: 'Produtos', exact: false },
+  { href: '/dashboard/fabricante/perfil', icon: Settings, label: 'Perfil da Fábrica', exact: true },
+  { href: '/dashboard/conta', icon: User, label: 'Conta', exact: true },
+];
+
+// Navegação do ADMIN (tudo)
+const adminNav: NavItem[] = [
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
+  { href: '/dashboard/setores', icon: Grid3X3, label: 'Setores', exact: false },
   { href: '/dashboard/historico', icon: ImageIcon, label: 'Minhas Artes', exact: true },
   { href: '/dashboard/brand-kit', icon: Palette, label: 'Brand Kit', exact: true },
   { href: '/dashboard/conta', icon: User, label: 'Conta', exact: true },
@@ -42,10 +71,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.refresh();
   };
 
-  const isActive = (item: typeof navItems[number]) => {
+  // Selecionar navegação por role
+  const getNavItems = (): NavItem[] => {
+    if (!profile) return lojistaNav;
+    switch (profile.role) {
+      case 'fabricante': return fabricanteNav;
+      case 'admin': return adminNav;
+      default: return lojistaNav;
+    }
+  };
+
+  const navItems = getNavItems();
+
+  const isActive = (item: NavItem) => {
     if (item.exact) return pathname === item.href;
-    // Sub-route match: /dashboard/produtos, /dashboard/produtos/xxx, /dashboard/estudio/xxx
-    return pathname.startsWith(item.href) || (item.href === '/dashboard/produtos' && pathname.startsWith('/dashboard/estudio'));
+    return pathname.startsWith(item.href) || 
+      (item.href === '/dashboard/produtos' && pathname.startsWith('/dashboard/estudio')) ||
+      (item.href === '/dashboard/setores' && (
+        pathname.startsWith('/dashboard/fabricas') || 
+        pathname.startsWith('/dashboard/categorias')
+      ));
   };
 
   return (
@@ -94,11 +139,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </span>
                 </div>
               </div>
+              {/* Notification Bell */}
+              <NotificationBell />
             </div>
           </div>
         )}
 
         <nav className="flex-1 py-6 px-4 space-y-1.5 overflow-y-auto">
+          {/* Role label */}
+          {profile && (
+            <div className="px-4 pb-3">
+              <span className="text-[10px] font-800 uppercase tracking-widest text-dark-600">
+                {profile.role === 'fabricante' ? 'Painel Fabricante' : profile.role === 'admin' ? 'Painel Admin' : 'Painel Lojista'}
+              </span>
+            </div>
+          )}
+
           {navItems.map((item) => {
             const active = isActive(item);
             return (
@@ -117,6 +173,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {profile?.role === 'admin' && (
             <>
               <div className="h-px bg-dark-800/40 my-4 mx-2" />
+              <div className="px-4 pb-3">
+                <span className="text-[10px] font-800 uppercase tracking-widest text-dark-600">Administração</span>
+              </div>
               <Link href="/dashboard/admin" onClick={() => setSidebarOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-700 transition-all border ${
                   pathname.startsWith('/dashboard/admin') 
@@ -141,14 +200,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main content */}
       <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
         {/* Mobile header */}
-        <header className="lg:hidden sticky top-0 z-30 h-16 bg-dark-950/80 backdrop-blur-xl border-b border-dark-800/40 flex items-center px-6">
-          <button onClick={() => setSidebarOpen(true)} className="text-dark-300 hover:text-white transition-colors"><Menu size={24} /></button>
-          <div className="ml-4 flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-brand-600 flex items-center justify-center">
-              <Sparkles size={14} className="text-white" />
+        <header className="lg:hidden sticky top-0 z-30 h-16 bg-dark-950/80 backdrop-blur-xl border-b border-dark-800/40 flex items-center justify-between px-6">
+          <div className="flex items-center gap-4">
+            <button onClick={() => setSidebarOpen(true)} className="text-dark-300 hover:text-white transition-colors"><Menu size={24} /></button>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-brand-600 flex items-center justify-center">
+                <Sparkles size={14} className="text-white" />
+              </div>
+              <span className="font-display font-800 text-sm tracking-tight">Fábrica de <span className="text-brand-400">Posts</span></span>
             </div>
-            <span className="font-display font-800 text-sm tracking-tight">Fábrica de <span className="text-brand-400">Posts</span></span>
           </div>
+          <NotificationBell />
         </header>
 
         <main className="flex-1 p-6 lg:p-10 max-w-7xl w-full mx-auto overflow-y-auto">
