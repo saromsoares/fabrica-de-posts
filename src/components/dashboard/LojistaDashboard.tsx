@@ -9,7 +9,7 @@ import { handleApiError } from '@/lib/api-errors';
 import {
   Store, Image as ImageIcon, Factory, Clock, Sparkles,
   ArrowRight, AlertCircle, Zap, Package,
-  TrendingUp, Crown, RefreshCw,
+  TrendingUp, Crown, RefreshCw, TrendingUp as UpgradeIcon,
 } from 'lucide-react';
 
 const log = createLogger('LojistaDashboard');
@@ -225,13 +225,23 @@ export default function LojistaDashboard({ userName }: { userName: string }) {
 
   const { profile, stats, recent_generations } = dashboard;
   const plan = profile.plan || 'free';
-  const planLabel = plan === 'pro' ? 'Pro' : plan === 'loja' ? 'Loja' : 'Free';
-  const planColor = plan === 'pro' ? 'text-purple-400' : plan === 'loja' ? 'text-blue-400' : 'text-dark-400';
-  const planBg = plan === 'pro'
-    ? 'bg-purple-600/10 border-purple-500/20'
-    : plan === 'loja'
-    ? 'bg-blue-600/10 border-blue-500/20'
-    : 'bg-dark-800/30 border-dark-700/30';
+
+  // Suporte a 5 planos: gratis/free, basico/loja, intermediario/pro, premium, super_premium
+  const PLAN_META: Record<string, { label: string; color: string; bg: string; isFree: boolean }> = {
+    free:          { label: 'Free',          color: 'text-dark-400',   bg: 'bg-dark-800/30 border-dark-700/30',       isFree: true },
+    gratis:        { label: 'Grátis',        color: 'text-dark-400',   bg: 'bg-dark-800/30 border-dark-700/30',       isFree: true },
+    basico:        { label: 'Básico',        color: 'text-blue-400',   bg: 'bg-blue-600/10 border-blue-500/20',       isFree: false },
+    loja:          { label: 'Loja',           color: 'text-blue-400',   bg: 'bg-blue-600/10 border-blue-500/20',       isFree: false },
+    intermediario: { label: 'Intermediário',  color: 'text-purple-400', bg: 'bg-purple-600/10 border-purple-500/20',   isFree: false },
+    pro:           { label: 'Pro',            color: 'text-purple-400', bg: 'bg-purple-600/10 border-purple-500/20',   isFree: false },
+    premium:       { label: 'Premium',        color: 'text-amber-400',  bg: 'bg-amber-600/10 border-amber-500/20',     isFree: false },
+    super_premium: { label: 'Super Premium',  color: 'text-yellow-300', bg: 'bg-yellow-600/10 border-yellow-500/20',   isFree: false },
+  };
+  const planMeta = PLAN_META[plan] ?? PLAN_META.free;
+  const planLabel = planMeta.label;
+  const planColor = planMeta.color;
+  const planBg = planMeta.bg;
+  const isFreePlan = planMeta.isFree;
   const usageColor = stats.usage_percentage >= 90
     ? 'bg-red-500'
     : stats.usage_percentage >= 70
@@ -240,6 +250,28 @@ export default function LojistaDashboard({ userName }: { userName: string }) {
 
   return (
     <div className="animate-fade-in-up space-y-8">
+
+      {/* Banner de upgrade — visível apenas para plano gratuito */}
+      {isFreePlan && (
+        <div className="flex items-center justify-between gap-4 px-4 py-3 bg-gradient-to-r from-brand-600/15 via-purple-600/10 to-brand-600/15 border border-brand-500/25 rounded-2xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-brand-600/20">
+              <Crown size={16} className="text-brand-400" />
+            </div>
+            <div>
+              <p className="text-sm font-700 text-white leading-tight">Você está no plano Grátis</p>
+              <p className="text-xs text-dark-400 mt-0.5">Faça upgrade para gerar mais artes e acessar mais fábricas</p>
+            </div>
+          </div>
+          <Link
+            href="/planos"
+            className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-700 rounded-xl transition-all hover:shadow-lg hover:shadow-brand-600/20"
+          >
+            <Sparkles size={12} />
+            Ver planos
+          </Link>
+        </div>
+      )}
 
       {/* Greeting */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -300,11 +332,36 @@ export default function LojistaDashboard({ userName }: { userName: string }) {
           />
         </div>
 
-        {stats.usage_percentage >= 90 && stats.usage_limit !== 999999 && (
-          <p className="text-xs text-amber-400 mt-2 flex items-center gap-1">
-            <AlertCircle size={12} />
-            Você está quase no limite. Considere fazer upgrade do plano.
-          </p>
+        {/* CTA de upgrade — aparece a partir de 70% de uso */}
+        {stats.usage_percentage >= 70 && stats.usage_limit !== 999999 && (
+          <div className={`mt-3 flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border ${
+            stats.usage_percentage >= 90
+              ? 'bg-red-500/8 border-red-500/20'
+              : 'bg-amber-500/8 border-amber-500/20'
+          }`}>
+            <div className="flex items-center gap-2">
+              <AlertCircle size={13} className={stats.usage_percentage >= 90 ? 'text-red-400' : 'text-amber-400'} />
+              <p className={`text-xs font-600 ${
+                stats.usage_percentage >= 90 ? 'text-red-300' : 'text-amber-300'
+              }`}>
+                {stats.usage_percentage >= 90
+                  ? 'Limite quase atingido!'
+                  : `${100 - stats.usage_percentage}% restante este mês`
+                }
+              </p>
+            </div>
+            <Link
+              href="/planos"
+              className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-700 transition-all ${
+                stats.usage_percentage >= 90
+                  ? 'bg-red-600 hover:bg-red-500 text-white'
+                  : 'bg-amber-600 hover:bg-amber-500 text-white'
+              }`}
+            >
+              <UpgradeIcon size={11} />
+              Fazer upgrade
+            </Link>
+          </div>
         )}
       </div>
 

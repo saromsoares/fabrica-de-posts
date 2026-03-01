@@ -5,10 +5,11 @@ import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { invokeWithAuth } from '@/hooks/useAuthenticatedFunction';
 import Link from 'next/link';
-import { Loader2, ArrowLeft, Factory as FactoryIcon, CheckCircle, Clock, UserPlus, Search } from 'lucide-react';
+import { Loader2, ArrowLeft, Factory as FactoryIcon, CheckCircle, Clock, UserPlus, Search, Lock } from 'lucide-react';
 import LogoAvatar from '@/components/ui/LogoAvatar';
 import type { Sector, Factory, FactoryFollower } from '@/types/database';
 import { createLogger } from '@/lib/logger';
+import { getPlanLimit } from '@/lib/plan-limits';
 
 const log = createLogger('Setores');
 
@@ -27,6 +28,8 @@ export default function SectorFactoriesPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [_userId, setUserId] = useState<string | null>(null);
+  const [approvedCount, setApprovedCount] = useState(0);
+  const [maxFactories, setMaxFactories] = useState<number>(999999);
 
   const loadData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -64,6 +67,16 @@ export default function SectorFactoriesPage() {
       ...f,
       follow_status: followMap.get(f.id) || null,
     }));
+
+    // Contar fábricas aprovadas e buscar limite do plano
+    const approved = (follows || []).filter(f => f.status === 'approved').length;
+    setApprovedCount(approved);
+
+    // Buscar plano do usuário para obter o limite de fábricas
+    const { data: profileData } = await supabase.from('profiles').select('plan').eq('id', user.id).single();
+    const userPlan = profileData?.plan || 'free';
+    const planLimits = await getPlanLimit(userPlan);
+    setMaxFactories(planLimits.max_factories_followed);
 
     setFactories(enriched);
     setLoading(false);
@@ -218,21 +231,36 @@ export default function SectorFactoriesPage() {
                             {isLoading ? <Loader2 size={12} className="animate-spin" /> : 'Cancelar'}
                           </button>
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => handleFollow(factory.id)}
-                          disabled={isLoading}
-                          className="inline-flex items-center gap-1.5 text-xs font-700 text-brand-400 bg-brand-500/10 px-3 py-1.5 rounded-full hover:bg-brand-500/20 transition-colors"
-                        >
-                          {isLoading ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <>
-                              <UserPlus size={12} /> Solicitar Acesso
-                            </>
-                          )}
-                        </button>
-                      )}
+                      ) : (() => {
+                        const atLimit = approvedCount >= maxFactories && maxFactories < 999999;
+                        return atLimit ? (
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-700 text-dark-500 bg-dark-800/60 px-3 py-1.5 rounded-full border border-dark-700/40 cursor-not-allowed">
+                              <Lock size={11} /> Limite atingido
+                            </span>
+                            <Link
+                              href="/planos"
+                              className="text-xs font-700 text-brand-400 hover:text-brand-300 transition-colors"
+                            >
+                              Upgrade →
+                            </Link>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleFollow(factory.id)}
+                            disabled={isLoading}
+                            className="inline-flex items-center gap-1.5 text-xs font-700 text-brand-400 bg-brand-500/10 px-3 py-1.5 rounded-full hover:bg-brand-500/20 transition-colors"
+                          >
+                            {isLoading ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <>
+                                <UserPlus size={12} /> Solicitar Acesso
+                              </>
+                            )}
+                          </button>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>

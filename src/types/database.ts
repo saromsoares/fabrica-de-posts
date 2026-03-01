@@ -22,7 +22,7 @@ export type Profile = {
   full_name: string | null;
   avatar_url: string | null;
   role: 'lojista' | 'fabricante' | 'admin' | 'super_admin';
-  plan: 'free' | 'loja' | 'pro';
+  plan: 'free' | 'gratis' | 'basico' | 'loja' | 'intermediario' | 'pro' | 'premium' | 'super_premium';
   is_super_admin: boolean;
   onboarding_complete: boolean | null;
   store_type: string | null;
@@ -114,6 +114,8 @@ export type Template = {
   active: boolean | null;
   created_at: string | null;
   updated_at: string | null;
+  /** Nível de acesso do template: basico | intermediario | premium | super_premium */
+  level: string | null;
 };
 
 export type Generation = {
