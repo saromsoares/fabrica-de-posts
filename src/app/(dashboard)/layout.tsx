@@ -8,7 +8,7 @@ import {
   Sparkles, LayoutDashboard, Palette, Package,
   Image as ImageIcon, User, LogOut, Shield,
   Menu, X, Factory, Store, Grid3X3, FolderOpen,
-  LayoutTemplate, Settings, ChevronRight, Crown, Zap,
+  LayoutTemplate, Settings, ChevronRight, Crown, Zap, Users,
 } from 'lucide-react';
 import type { Profile } from '@/types/database';
 import { isAdminRole } from '@/lib/role-helpers';
@@ -39,6 +39,7 @@ const fabricanteNav: NavItem[] = [
   { href: '/dashboard/fabricante/produtos', icon: Package, label: 'Produtos', exact: false },
   { href: '/dashboard/fabricante/templates', icon: LayoutTemplate, label: 'Templates', exact: true },
   { href: '/dashboard/fabricante/categorias', icon: FolderOpen, label: 'Categorias', exact: false },
+  { href: '/dashboard/fabricante/solicitacoes', icon: Users, label: 'Solicitações', exact: true },
   { href: '/dashboard/fabricante/perfil', icon: Settings, label: 'Perfil da Fábrica', exact: true },
   { href: '/dashboard/conta', icon: User, label: 'Conta', exact: true },
 ];

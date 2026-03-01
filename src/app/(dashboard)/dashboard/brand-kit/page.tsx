@@ -151,15 +151,36 @@ export default function BrandKitPage() {
         {/* Instagram */}
         <div>
           <label className="block text-sm font-500 text-dark-300 mb-2">@Instagram</label>
-          <input type="text" value={brandKit.instagram_handle || ''} onChange={(e) => setBrandKit({ ...brandKit, instagram_handle: e.target.value })}
-            className={inputClass} placeholder="@minhaloja" />
+          <input
+            type="text"
+            value={brandKit.instagram_handle || ''}
+            onChange={(e) => {
+              let v = e.target.value.replace(/\s/g, '');
+              if (v && !v.startsWith('@')) v = '@' + v;
+              setBrandKit({ ...brandKit, instagram_handle: v });
+            }}
+            className={inputClass}
+            placeholder="@minhaloja"
+          />
         </div>
 
         {/* WhatsApp */}
         <div>
           <label className="block text-sm font-500 text-dark-300 mb-2">WhatsApp</label>
-          <input type="text" value={brandKit.whatsapp || ''} onChange={(e) => setBrandKit({ ...brandKit, whatsapp: e.target.value })}
-            className={inputClass} placeholder="+55 11 99999-9999" />
+          <input
+            type="tel"
+            value={brandKit.whatsapp || ''}
+            onChange={(e) => {
+              const digits = e.target.value.replace(/\D/g, '').slice(0, 13);
+              let formatted = digits;
+              if (digits.length > 2) formatted = '+' + digits.slice(0, 2) + ' ' + digits.slice(2);
+              if (digits.length > 4) formatted = '+' + digits.slice(0, 2) + ' ' + digits.slice(2, 4) + ' ' + digits.slice(4);
+              if (digits.length > 9) formatted = '+' + digits.slice(0, 2) + ' ' + digits.slice(2, 4) + ' ' + digits.slice(4, 9) + '-' + digits.slice(9);
+              setBrandKit({ ...brandKit, whatsapp: formatted });
+            }}
+            className={inputClass}
+            placeholder="+55 11 99999-9999"
+          />
         </div>
 
         {/* Save */}
