@@ -131,7 +131,7 @@ export default function BrandKitPage() {
         <div>
           <label className="block text-sm font-500 text-dark-300 mb-3">Logo da loja</label>
           <div className="flex items-center gap-5">
-            <div className="w-20 h-20 rounded-2xl bg-dark-800 border-2 border-dashed border-dark-600 flex items-center justify-center overflow-hidden">
+            <div className="w-20 h-20 rounded-2xl bg-white border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
               {logoPreview ? (
                 <img src={logoPreview} alt="Logo" className="w-full h-full object-contain p-1" />
               ) : (

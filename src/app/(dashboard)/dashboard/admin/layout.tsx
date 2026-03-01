@@ -7,8 +7,8 @@ import { Shield, Package, Users, ArrowLeft, Factory, Tag } from 'lucide-react';
 const adminNav = [
   { href: '/dashboard/admin', icon: Shield, label: 'Painel Admin', exact: true },
   { href: '/dashboard/admin/fabricas', icon: Factory, label: 'Fábricas' },
-  { href: '/dashboard/admin/produtos', icon: Package, label: 'Produtos' },
   { href: '/dashboard/admin/categorias', icon: Tag, label: 'Categorias' },
+  { href: '/dashboard/admin/produtos', icon: Package, label: 'Produtos' },
   { href: '/dashboard/admin/clients', icon: Users, label: 'Clientes' },
 ];
 

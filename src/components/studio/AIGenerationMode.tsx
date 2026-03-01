@@ -172,7 +172,7 @@ export default function AIGenerationMode({
         .from('products')
         .select(`
           id, name, image_url, description,
-          factory:factories!inner(id, name, logo_url, active),
+          factory:factories!factory_id(id, name, logo_url, active),
           follower:factory_followers!inner(lojista_id, status)
         `)
         .eq('active', true)
