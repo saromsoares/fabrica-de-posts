@@ -1,17 +1,14 @@
 import Link from 'next/link';
 import { Sparkles, Palette, Download, Zap, Check, ChevronDown } from 'lucide-react';
+import { createClient } from '@/lib/supabase-server';
+import { getFallbackLimits, formatLimit, formatPlanPrice } from '@/lib/plan-limits';
+import type { PlanLimits } from '@/lib/plan-limits';
 
 const steps = [
   { icon: Palette, title: 'Configure sua marca', desc: 'Suba sua logo, defina cores e contatos. Uma vez só.' },
   { icon: Sparkles, title: 'Escolha produto + template', desc: 'Selecione o produto e o layout ideal para sua rede.' },
   { icon: Zap, title: 'Preencha e gere', desc: 'Preço, CTA e pronto: arte + legenda em segundos.' },
   { icon: Download, title: 'Baixe e poste', desc: 'Download da imagem + copie a legenda. Pronto para publicar.' },
-];
-
-const plans = [
-  { name: 'Free', price: 'R$ 0', limit: '5 artes/mês', features: ['1 marca', 'Templates básicos', 'Download PNG'], cta: 'Começar grátis', popular: false },
-  { name: 'Loja', price: 'R$ 49', limit: '30 artes/mês', features: ['1 marca', 'Todos os templates', 'Download PNG/JPG', 'Legendas automáticas', 'Histórico completo'], cta: 'Assinar Loja', popular: true },
-  { name: 'Pro', price: 'R$ 99', limit: '200 artes/mês', features: ['1 marca', 'Todos os templates', 'Download PNG/JPG', 'Legendas automáticas', 'Histórico completo', 'Suporte prioritário'], cta: 'Assinar Pro', popular: false },
 ];
 
 const faqs = [
@@ -21,7 +18,45 @@ const faqs = [
   { q: 'Posso cancelar a qualquer momento?', a: 'Sim. Sem fidelidade. Você cancela quando quiser e continua usando até o fim do período pago.' },
 ];
 
-export default function LandingPage() {
+// Mapeamento de features por plano (não é limite — é lista de funcionalidades)
+const PLAN_FEATURES: Record<string, string[]> = {
+  free: ['1 marca', 'Templates básicos', 'Download PNG'],
+  loja: ['1 marca', 'Todos os templates', 'Download PNG/JPG', 'Legendas automáticas', 'Histórico completo'],
+  pro: ['1 marca', 'Todos os templates', 'Download PNG/JPG', 'Legendas automáticas', 'Histórico completo', 'Suporte prioritário'],
+};
+
+const PLAN_CTA: Record<string, string> = {
+  free: 'Começar grátis',
+  loja: 'Assinar Loja',
+  pro: 'Assinar Pro',
+};
+
+const PLAN_POPULAR: Record<string, boolean> = {
+  free: false,
+  loja: true,
+  pro: false,
+};
+
+async function getPlanLimitsForLanding(): Promise<PlanLimits[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('plan_limits')
+      .select('*')
+      .order('monthly_generations');
+
+    if (error || !data || data.length === 0) {
+      return getFallbackLimits();
+    }
+    return data as PlanLimits[];
+  } catch {
+    return getFallbackLimits();
+  }
+}
+
+export default async function LandingPage() {
+  const planLimits = await getPlanLimitsForLanding();
+
   return (
     <main className="min-h-screen">
       {/* Nav */}
@@ -79,30 +114,61 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Preços */}
+      {/* Preços — dados dinâmicos da tabela plan_limits */}
       <section id="precos" className="py-20">
         <div className="max-w-5xl mx-auto px-6">
           <h2 className="font-display text-3xl md:text-4xl font-800 text-center mb-4">Planos e <span className="text-brand-500">preços</span></h2>
           <p className="text-dark-400 text-center mb-16 max-w-xl mx-auto">Escolha o plano ideal para o volume da sua loja. Comece grátis e evolua conforme cresce.</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {plans.map((plan) => (
-              <div key={plan.name} className={`relative rounded-2xl p-8 border transition-all ${plan.popular ? 'bg-dark-900/80 border-brand-500/40 shadow-[0_0_40px_rgba(224,96,78,0.1)]' : 'bg-dark-900/40 border-dark-800/40'}`}>
-                {plan.popular && <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-brand-600 text-white text-xs font-600 rounded-full">Popular</div>}
-                <h3 className="font-display font-700 text-xl mb-1">{plan.name}</h3>
-                <p className="text-dark-400 text-sm mb-4">{plan.limit}</p>
-                <div className="font-display text-4xl font-800 mb-6">{plan.price}<span className="text-lg text-dark-400 font-400">/mês</span></div>
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-dark-300">
-                      <Check size={16} className="text-brand-400 flex-shrink-0" /> {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/login" className={`block w-full py-3 rounded-xl text-center font-600 transition-all ${plan.popular ? 'bg-brand-600 hover:bg-brand-700 text-white' : 'bg-dark-800 hover:bg-dark-700 text-dark-200'}`}>
-                  {plan.cta}
-                </Link>
-              </div>
-            ))}
+            {planLimits.map((plan) => {
+              const isPopular = PLAN_POPULAR[plan.plan_name] ?? false;
+              const features = PLAN_FEATURES[plan.plan_name] ?? [];
+              const cta = PLAN_CTA[plan.plan_name] ?? 'Assinar';
+              const limitLabel = formatLimit(plan.monthly_generations);
+              const priceLabel = formatPlanPrice(plan.price_brl);
+
+              return (
+                <div
+                  key={plan.plan_name}
+                  className={`relative rounded-2xl p-8 border transition-all ${
+                    isPopular
+                      ? 'bg-dark-900/80 border-brand-500/40 shadow-[0_0_40px_rgba(224,96,78,0.1)]'
+                      : 'bg-dark-900/40 border-dark-800/40'
+                  }`}
+                >
+                  {isPopular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-brand-600 text-white text-xs font-600 rounded-full">
+                      Popular
+                    </div>
+                  )}
+                  <h3 className="font-display font-700 text-xl mb-1 capitalize">{plan.plan_name}</h3>
+                  <p className="text-dark-400 text-sm mb-4">
+                    {limitLabel === '∞' ? 'Gerações ilimitadas' : `${limitLabel} artes/mês`}
+                  </p>
+                  <div className="font-display text-4xl font-800 mb-6">
+                    {plan.price_brl === 0 ? 'Grátis' : `R$ ${Math.floor(plan.price_brl)}`}
+                    {plan.price_brl > 0 && <span className="text-lg text-dark-400 font-400">/mês</span>}
+                  </div>
+                  <ul className="space-y-3 mb-8">
+                    {features.map((f) => (
+                      <li key={f} className="flex items-center gap-2 text-sm text-dark-300">
+                        <Check size={16} className="text-brand-400 flex-shrink-0" /> {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link
+                    href="/login"
+                    className={`block w-full py-3 rounded-xl text-center font-600 transition-all ${
+                      isPopular
+                        ? 'bg-brand-600 hover:bg-brand-700 text-white'
+                        : 'bg-dark-800 hover:bg-dark-700 text-dark-200'
+                    }`}
+                  >
+                    {cta}
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

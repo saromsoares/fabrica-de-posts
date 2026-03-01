@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
+import { getPlanLimit } from '@/lib/plan-limits';
 import Link from 'next/link';
 import {
   Store, Image as ImageIcon, Factory, Clock, Sparkles,
@@ -31,11 +32,7 @@ interface RecentGeneration {
   products: { name: string; image_url: string | null } | null;
 }
 
-const PLAN_LIMITS: Record<string, number> = {
-  free: 5,
-  loja: 50,
-  pro: 999999,
-};
+// PLAN_LIMITS removido — usar getPlanLimit() de @/lib/plan-limits (fonte única de verdade)
 
 /* ═══════════════════════════════════════
    COMPONENT
@@ -45,7 +42,7 @@ export default function LojistaDashboard({ userName }: { userName: string }) {
   const supabase = createClient();
   const [plan, setPlan] = useState('free');
   const [stats, setStats] = useState<LojistaStats>({
-    total_generations: 0, usage_count: 0, usage_limit: 5,
+    total_generations: 0, usage_count: 0, usage_limit: 0,
     usage_percentage: 0, factories_followed: 0, pending_follows: 0,
   });
   const [recentGenerations, setRecentGenerations] = useState<RecentGeneration[]>([]);
@@ -69,7 +66,9 @@ export default function LojistaDashboard({ userName }: { userName: string }) {
 
       const userPlan = profile?.plan || 'free';
       setPlan(userPlan);
-      const limit = PLAN_LIMITS[userPlan] ?? 5;
+      // Busca limite do banco (plan_limits table) via helper com cache 5min
+      const planLimitData = await getPlanLimit(userPlan);
+      const limit = planLimitData.monthly_generations;
 
       // 2. Count generations this month
       const now = new Date();
