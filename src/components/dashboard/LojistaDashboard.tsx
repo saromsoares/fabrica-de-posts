@@ -1,18 +1,36 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase-browser';
-import { getPlanLimit } from '@/lib/plan-limits';
 import Link from 'next/link';
 import {
   Store, Image as ImageIcon, Factory, Clock, Sparkles,
-  ArrowRight, Loader2, AlertCircle, Zap, Package,
-  TrendingUp, Crown,
+  ArrowRight, AlertCircle, Zap, Package,
+  TrendingUp, Crown, RefreshCw,
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════
-   TYPES
+   TYPES — contrato idêntico ao lojista-stats v4
    ═══════════════════════════════════════ */
+
+interface LojistaProfile {
+  role: string;
+  plan: string;
+  full_name: string | null;
+  store_type: string | null;
+  location_city: string | null;
+  location_state: string | null;
+  store_voice: string | null;
+  onboarding_complete: boolean;
+}
+
+interface LojistaPlanLimits {
+  monthly_generations: number;
+  max_products: number;
+  max_factories_followed: number;
+  description: string | null;
+  price_brl: number;
+}
 
 interface LojistaStats {
   total_generations: number;
@@ -29,10 +47,69 @@ interface RecentGeneration {
   image_url: string | null;
   format: string;
   created_at: string;
-  products: { name: string; image_url: string | null } | null;
+  product: { name: string; image_url: string | null } | null;
 }
 
-// PLAN_LIMITS removido — usar getPlanLimit() de @/lib/plan-limits (fonte única de verdade)
+interface LojistaDashboardData {
+  profile: LojistaProfile;
+  plan_limits: LojistaPlanLimits;
+  stats: LojistaStats;
+  recent_generations: RecentGeneration[];
+}
+
+/* ═══════════════════════════════════════
+   SKELETON
+   ═══════════════════════════════════════ */
+
+function DashboardSkeleton() {
+  return (
+    <div className="animate-pulse space-y-8">
+      {/* Greeting skeleton */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <div className="h-7 w-48 bg-dark-800/60 rounded-xl" />
+          <div className="h-4 w-32 bg-dark-800/40 rounded-lg" />
+        </div>
+        <div className="h-7 w-20 bg-dark-800/40 rounded-full" />
+      </div>
+
+      {/* Usage bar skeleton */}
+      <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-5 space-y-3">
+        <div className="flex justify-between">
+          <div className="h-4 w-24 bg-dark-800/60 rounded" />
+          <div className="h-6 w-16 bg-dark-800/40 rounded-full" />
+        </div>
+        <div className="h-8 w-32 bg-dark-800/60 rounded" />
+        <div className="h-2.5 w-full bg-dark-800/60 rounded-full" />
+      </div>
+
+      {/* Stats cards skeleton */}
+      <div className="grid grid-cols-3 gap-4">
+        {[0, 1, 2].map(i => (
+          <div key={i} className="bg-dark-900/40 border border-dark-800/30 rounded-2xl p-4 space-y-2">
+            <div className="h-4 w-16 bg-dark-800/60 rounded" />
+            <div className="h-8 w-12 bg-dark-800/60 rounded" />
+          </div>
+        ))}
+      </div>
+
+      {/* Quick actions skeleton */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[0, 1, 2].map(i => (
+          <div key={i} className="h-16 bg-dark-900/40 border border-dark-800/30 rounded-2xl" />
+        ))}
+      </div>
+
+      {/* Recent generations skeleton */}
+      <div className="space-y-3">
+        <div className="h-5 w-32 bg-dark-800/60 rounded" />
+        {[0, 1, 2].map(i => (
+          <div key={i} className="h-16 bg-dark-900/40 border border-dark-800/30 rounded-2xl" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 /* ═══════════════════════════════════════
    COMPONENT
@@ -40,141 +117,109 @@ interface RecentGeneration {
 
 export default function LojistaDashboard({ userName }: { userName: string }) {
   const supabase = createClient();
-  const [plan, setPlan] = useState('free');
-  const [stats, setStats] = useState<LojistaStats>({
-    total_generations: 0, usage_count: 0, usage_limit: 0,
-    usage_percentage: 0, factories_followed: 0, pending_follows: 0,
-  });
-  const [recentGenerations, setRecentGenerations] = useState<RecentGeneration[]>([]);
+  const [dashboard, setDashboard] = useState<LojistaDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const lastFetchRef = useRef<number>(0);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  // ─── Fetch: 1 única chamada à Edge Function lojista-stats ───
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    else setRefreshing(true);
     setError(null);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setError('Sessão expirada. Faça login novamente.'); setLoading(false); return; }
+      // SESSION GUARD
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('Sessão expirada. Faça login novamente.');
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
 
-      // 1. Get profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('plan')
-        .eq('id', user.id)
-        .single();
+      const { data, error: fnError } = await supabase.functions.invoke('lojista-stats');
 
-      const userPlan = profile?.plan || 'free';
-      setPlan(userPlan);
-      // Busca limite do banco (plan_limits table) via helper com cache 5min
-      const planLimitData = await getPlanLimit(userPlan);
-      const limit = planLimitData.monthly_generations;
+      if (fnError) throw fnError;
+      if (!data) throw new Error('Resposta vazia da Edge Function');
 
-      // 2. Count generations this month
-      const now = new Date();
-      const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-
-      const { count: monthlyCount } = await supabase
-        .from('generations')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .gte('created_at', firstOfMonth);
-
-      // 3. Total generations
-      const { count: totalGenerations } = await supabase
-        .from('generations')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
-
-      // 4. Factories followed (approved)
-      const { count: factoriesFollowed } = await supabase
-        .from('factory_followers')
-        .select('*', { count: 'exact', head: true })
-        .eq('lojista_id', user.id)
-        .eq('status', 'approved');
-
-      // 5. Pending follows
-      const { count: pendingFollows } = await supabase
-        .from('factory_followers')
-        .select('*', { count: 'exact', head: true })
-        .eq('lojista_id', user.id)
-        .eq('status', 'pending');
-
-      const usageCount = monthlyCount ?? 0;
-      const usagePercentage = limit > 0 ? Math.round((usageCount / limit) * 100) : 0;
-
-      setStats({
-        total_generations: totalGenerations ?? 0,
-        usage_count: usageCount,
-        usage_limit: limit,
-        usage_percentage: usagePercentage,
-        factories_followed: factoriesFollowed ?? 0,
-        pending_follows: pendingFollows ?? 0,
-      });
-
-      // 6. Recent generations (last 5)
-      const { data: generations } = await supabase
-        .from('generations')
-        .select(`
-          id, caption, image_url, format, created_at,
-          products:product_id(name, image_url)
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      setRecentGenerations((generations as unknown as RecentGeneration[]) ?? []);
-
+      setDashboard(data as LojistaDashboardData);
+      lastFetchRef.current = Date.now();
     } catch (err) {
-      console.error('LojistaDashboard error:', err);
+      console.error('[LojistaDashboard] fetchData error:', err);
       setError('Erro ao carregar dados. Tente novamente.');
     }
 
     setLoading(false);
+    setRefreshing(false);
   }, [supabase]);
 
+  // ─── Mount: buscar dados 1 vez ───
   useEffect(() => {
     let cancelled = false;
-    const run = async () => {
-      // SESSION GUARD: verificar sessão antes de buscar dados
+
+    async function run() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session || cancelled) {
-        console.log('[LojistaDashboard] Sem sessão ativa — abortando fetchData');
-        return;
-      }
+      if (!session || cancelled) return;
       await fetchData();
-    };
+    }
+
     run();
     return () => { cancelled = true; };
   }, [fetchData, supabase]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-6 h-6 animate-spin text-brand-400" />
-      </div>
-    );
-  }
+  // ─── Page Visibility: recarregar quando usuário volta à aba (se > 5min) ───
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const stale = Date.now() - lastFetchRef.current > 5 * 60 * 1000; // 5 minutos
+        if (stale) fetchData(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [fetchData]);
 
+  // ─── Loading state ───
+  if (loading) return <DashboardSkeleton />;
+
+  // ─── Error state ───
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <AlertCircle size={32} className="text-red-400" />
         <p className="text-dark-400 text-sm">{error}</p>
-        <button onClick={fetchData} className="px-4 py-2 bg-dark-800 text-white rounded-xl text-sm font-600 hover:bg-dark-700 transition-all">
+        <button
+          onClick={() => fetchData()}
+          className="px-4 py-2 bg-dark-800 text-white rounded-xl text-sm font-600 hover:bg-dark-700 transition-all"
+        >
           Tentar novamente
         </button>
       </div>
     );
   }
 
+  if (!dashboard) return null;
+
+  const { profile, stats, recent_generations } = dashboard;
+  const plan = profile.plan || 'free';
   const planLabel = plan === 'pro' ? 'Pro' : plan === 'loja' ? 'Loja' : 'Free';
   const planColor = plan === 'pro' ? 'text-purple-400' : plan === 'loja' ? 'text-blue-400' : 'text-dark-400';
-  const planBg = plan === 'pro' ? 'bg-purple-600/10 border-purple-500/20' : plan === 'loja' ? 'bg-blue-600/10 border-blue-500/20' : 'bg-dark-800/30 border-dark-700/30';
-  const usageColor = stats.usage_percentage >= 90 ? 'bg-red-500' : stats.usage_percentage >= 70 ? 'bg-amber-500' : 'bg-brand-500';
+  const planBg = plan === 'pro'
+    ? 'bg-purple-600/10 border-purple-500/20'
+    : plan === 'loja'
+    ? 'bg-blue-600/10 border-blue-500/20'
+    : 'bg-dark-800/30 border-dark-700/30';
+  const usageColor = stats.usage_percentage >= 90
+    ? 'bg-red-500'
+    : stats.usage_percentage >= 70
+    ? 'bg-amber-500'
+    : 'bg-brand-500';
 
   return (
     <div className="animate-fade-in-up space-y-8">
+
       {/* Greeting */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -184,9 +229,19 @@ export default function LojistaDashboard({ userName }: { userName: string }) {
           </h1>
           <p className="text-dark-400 text-sm mt-1">Visão geral da sua fábrica de posts</p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-900/80 border border-dark-800/50 rounded-full self-start sm:self-auto">
-          <Store size={14} className="text-brand-400" />
-          <span className="text-[10px] font-700 uppercase tracking-wider text-brand-400">Lojista</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => fetchData(true)}
+            disabled={refreshing}
+            className="p-2 rounded-xl bg-dark-900/60 border border-dark-800/40 text-dark-400 hover:text-white hover:border-dark-700 transition-all disabled:opacity-50"
+            title="Atualizar dados"
+          >
+            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+          </button>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-900/80 border border-dark-800/50 rounded-full">
+            <Store size={14} className="text-brand-400" />
+            <span className="text-[10px] font-700 uppercase tracking-wider text-brand-400">Lojista</span>
+          </div>
         </div>
       </div>
 
@@ -205,7 +260,10 @@ export default function LojistaDashboard({ userName }: { userName: string }) {
 
         <div className="flex items-end justify-between mb-2">
           <span className="text-2xl font-800 text-white">
-            {stats.usage_count} <span className="text-sm font-600 text-dark-400">/ {stats.usage_limit === 999999 ? '∞' : stats.usage_limit}</span>
+            {stats.usage_count}{' '}
+            <span className="text-sm font-600 text-dark-400">
+              / {stats.usage_limit === 999999 ? '∞' : stats.usage_limit}
+            </span>
           </span>
           <span className={`text-xs font-700 ${
             stats.usage_percentage >= 90 ? 'text-red-400' : stats.usage_percentage >= 70 ? 'text-amber-400' : 'text-brand-400'
@@ -288,81 +346,78 @@ export default function LojistaDashboard({ userName }: { userName: string }) {
 
         <Link
           href="/dashboard/historico"
-          className="flex items-center gap-4 p-4 bg-dark-900/60 border border-dark-800/40 rounded-2xl hover:border-purple-500/30 transition-all group"
+          className="flex items-center gap-4 p-4 bg-dark-900/60 border border-dark-800/40 rounded-2xl hover:border-green-500/30 transition-all group"
         >
-          <div className="p-3 rounded-xl bg-purple-600/15">
-            <ImageIcon size={20} className="text-purple-400" />
+          <div className="p-3 rounded-xl bg-green-600/15">
+            <ImageIcon size={20} className="text-green-400" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-700 text-white">Minhas Artes</p>
-            <p className="text-xs text-dark-400 mt-0.5">Histórico</p>
+            <p className="text-sm font-700 text-white">Histórico</p>
+            <p className="text-xs text-dark-400 mt-0.5">Posts criados</p>
           </div>
-          <ArrowRight size={16} className="text-dark-600 group-hover:text-purple-400 transition-colors" />
+          <ArrowRight size={16} className="text-dark-600 group-hover:text-green-400 transition-colors" />
         </Link>
       </div>
 
       {/* Recent generations */}
-      {recentGenerations.length > 0 && (
+      {recent_generations.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-700 text-white flex items-center gap-2">
-              <Zap size={14} className="text-brand-400" />
-              Últimas Gerações
+              <ImageIcon size={16} className="text-brand-400" />
+              Posts Recentes
             </h2>
-            <Link href="/dashboard/historico" className="text-xs text-dark-400 hover:text-brand-400 transition-colors">
-              Ver todas →
+            <Link href="/dashboard/historico" className="text-xs text-brand-400 hover:text-brand-300 transition-colors">
+              Ver todos →
             </Link>
           </div>
 
           <div className="space-y-3">
-            {recentGenerations.map((gen) => (
-              <Link
+            {recent_generations.map((gen) => (
+              <div
                 key={gen.id}
-                href="/dashboard/historico"
-                className="flex items-center gap-4 p-3 bg-dark-900/40 border border-dark-800/30 rounded-2xl hover:border-dark-700/50 transition-all group"
+                className="flex items-center gap-4 p-3 bg-dark-900/40 border border-dark-800/30 rounded-xl hover:border-dark-700/50 transition-all"
               >
-                <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center p-2 flex-shrink-0 overflow-hidden">
+                {/* Thumbnail */}
+                <div className="w-12 h-12 rounded-lg bg-white border border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
                   {gen.image_url ? (
-                    <img src={gen.image_url} alt="" className="max-w-full max-h-full object-contain" loading="lazy" />
+                    <img src={gen.image_url} alt={gen.product?.name ?? 'Post'} className="w-full h-full object-contain" />
                   ) : (
-                    <ImageIcon size={20} className="text-dark-600" />
+                    <ImageIcon size={20} className="text-gray-400" />
                   )}
                 </div>
+
+                {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-700 text-white truncate">
-                    {gen.products?.name || 'Produto'}
+                  <p className="text-sm font-600 text-white truncate">
+                    {gen.product?.name ?? 'Produto removido'}
                   </p>
                   {gen.caption && (
-                    <p className="text-[11px] text-dark-400 mt-0.5 line-clamp-1">{gen.caption}</p>
+                    <p className="text-xs text-dark-400 truncate mt-0.5">{gen.caption}</p>
                   )}
                 </div>
-                <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-800 uppercase tracking-wider ${
-                    gen.format === 'story' ? 'bg-purple-600/20 text-purple-400' : 'bg-blue-600/20 text-blue-400'
-                  }`}>
-                    {gen.format}
-                  </span>
-                  <span className="text-[10px] text-dark-500">
-                    {new Date(gen.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                  </span>
-                </div>
-              </Link>
+
+                {/* Format badge */}
+                <span className="text-[10px] font-700 uppercase tracking-wider text-dark-500 bg-dark-800/60 px-2 py-1 rounded-lg flex-shrink-0">
+                  {gen.format}
+                </span>
+              </div>
             ))}
           </div>
         </div>
       )}
 
       {/* Empty state */}
-      {recentGenerations.length === 0 && (
-        <div className="text-center py-12 bg-dark-900/40 border border-dark-800/30 rounded-3xl">
-          <ImageIcon size={48} className="mx-auto text-dark-600 mb-4" />
-          <h2 className="text-lg font-600 text-dark-300 mb-2">Nenhuma arte gerada</h2>
-          <p className="text-dark-500 text-sm mb-6">Acesse o catálogo e gere sua primeira arte!</p>
+      {recent_generations.length === 0 && (
+        <div className="text-center py-12 bg-dark-900/40 border border-dark-800/30 rounded-2xl">
+          <Sparkles size={32} className="mx-auto text-dark-600 mb-3" />
+          <p className="text-dark-400 text-sm font-500">Nenhum post gerado ainda</p>
+          <p className="text-dark-600 text-xs mt-1">Explore o catálogo e crie seu primeiro post</p>
           <Link
             href="/dashboard/setores"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-xl text-sm font-600 hover:bg-brand-700 transition-all"
+            className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-brand-600 text-white rounded-xl text-sm font-700 hover:bg-brand-700 transition-all"
           >
-            <Sparkles size={16} /> Ir para Setores
+            <Sparkles size={14} /> Começar agora
           </Link>
         </div>
       )}

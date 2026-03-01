@@ -1,17 +1,17 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import {
   Factory, Package, Users, Clock, TrendingUp,
-  Check, X, Loader2, AlertCircle, ArrowRight,
-  Image as ImageIcon, Sparkles, UserPlus, BarChart3,
+  Check, X, AlertCircle, ArrowRight,
+  Image as ImageIcon, Sparkles, RefreshCw, BarChart3,
 } from 'lucide-react';
 import LogoAvatar from '@/components/ui/LogoAvatar';
 
 /* ═══════════════════════════════════════
-   TYPES
+   TYPES — contrato idêntico ao fabricante-stats v3
    ═══════════════════════════════════════ */
 
 interface FactoryInfo {
@@ -19,15 +19,6 @@ interface FactoryInfo {
   name: string;
   logo_url: string | null;
   active: boolean;
-}
-
-interface FollowerRow {
-  id: string;
-  status: string;
-  requested_at: string;
-  responded_at: string | null;
-  lojista_id: string;
-  profiles: { full_name: string | null; avatar_url: string | null } | null;
 }
 
 interface FabricanteStats {
@@ -38,173 +29,162 @@ interface FabricanteStats {
   total_generations: number;
 }
 
+interface RecentFollower {
+  id: string;
+  status: string;
+  requested_at: string;
+  lojista_id: string;
+  profile: { full_name: string | null; avatar_url: string | null } | null;
+}
+
+interface TopProduct {
+  product_id: string;
+  product_name: string;
+  image_url: string | null;
+  generation_count: number;
+}
+
+interface FabricanteDashboardData {
+  has_factory: boolean;
+  factory?: FactoryInfo;
+  stats?: FabricanteStats;
+  recent_followers?: RecentFollower[];
+  top_products?: TopProduct[];
+  message?: string;
+}
+
+/* ═══════════════════════════════════════
+   SKELETON
+   ═══════════════════════════════════════ */
+
+function DashboardSkeleton() {
+  return (
+    <div className="animate-pulse space-y-8">
+      {/* Greeting skeleton */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <div className="h-7 w-52 bg-dark-800/60 rounded-xl" />
+          <div className="h-4 w-40 bg-dark-800/40 rounded-lg" />
+        </div>
+        <div className="h-7 w-24 bg-dark-800/40 rounded-full" />
+      </div>
+
+      {/* Factory info skeleton */}
+      <div className="flex items-center gap-4 p-4 bg-dark-900/60 border border-dark-800/40 rounded-2xl">
+        <div className="w-12 h-12 rounded-xl bg-dark-800/60" />
+        <div className="space-y-2 flex-1">
+          <div className="h-4 w-32 bg-dark-800/60 rounded" />
+          <div className="h-3 w-24 bg-dark-800/40 rounded" />
+        </div>
+      </div>
+
+      {/* Stats cards skeleton */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[0, 1, 2, 3].map(i => (
+          <div key={i} className="bg-dark-900/40 border border-dark-800/30 rounded-2xl p-4 space-y-2">
+            <div className="h-4 w-16 bg-dark-800/60 rounded" />
+            <div className="h-8 w-12 bg-dark-800/60 rounded" />
+          </div>
+        ))}
+      </div>
+
+      {/* Two column skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-3">
+          <div className="h-5 w-32 bg-dark-800/60 rounded" />
+          {[0, 1, 2].map(i => (
+            <div key={i} className="h-16 bg-dark-900/40 border border-dark-800/30 rounded-xl" />
+          ))}
+        </div>
+        <div className="space-y-3">
+          <div className="h-5 w-28 bg-dark-800/60 rounded" />
+          {[0, 1, 2].map(i => (
+            <div key={i} className="h-14 bg-dark-900/40 border border-dark-800/30 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════
    COMPONENT
    ═══════════════════════════════════════ */
 
 export default function FabricanteDashboard({ userName }: { userName: string }) {
   const supabase = createClient();
-  const [factory, setFactory] = useState<FactoryInfo | null>(null);
-  const [hasFactory, setHasFactory] = useState(true);
-  const [stats, setStats] = useState<FabricanteStats>({
-    total_products: 0, active_products: 0, total_followers: 0,
-    pending_requests: 0, total_generations: 0,
-  });
-  const [recentFollowers, setRecentFollowers] = useState<FollowerRow[]>([]);
-  const [topProducts, setTopProducts] = useState<Array<{
-    product_id: string; product_name: string; image_url: string | null; generation_count: number;
-  }>>([]);
+  const [dashboard, setDashboard] = useState<FabricanteDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const lastFetchRef = useRef<number>(0);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  // ─── Fetch: 1 única chamada à Edge Function fabricante-stats ───
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    else setRefreshing(true);
     setError(null);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setError('Sessão expirada. Faça login novamente.'); setLoading(false); return; }
-
-      // 1. Get factory
-      const { data: factoryData } = await supabase
-        .from('factories')
-        .select('id, name, logo_url, active')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!factoryData) {
-        setHasFactory(false);
+      // SESSION GUARD
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('Sessão expirada. Faça login novamente.');
         setLoading(false);
+        setRefreshing(false);
         return;
       }
 
-      setFactory(factoryData);
-      setHasFactory(true);
-      const factoryId = factoryData.id;
+      const { data, error: fnError } = await supabase.functions.invoke('fabricante-stats');
 
-      // 2. Count products
-      const { count: totalProducts } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true })
-        .eq('factory_id', factoryId);
+      if (fnError) throw fnError;
+      if (!data) throw new Error('Resposta vazia da Edge Function');
 
-      const { count: activeProducts } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true })
-        .eq('factory_id', factoryId)
-        .eq('active', true);
-
-      // 3. Count followers
-      const { count: totalFollowers } = await supabase
-        .from('factory_followers')
-        .select('*', { count: 'exact', head: true })
-        .eq('factory_id', factoryId)
-        .eq('status', 'approved');
-
-      const { count: pendingRequests } = await supabase
-        .from('factory_followers')
-        .select('*', { count: 'exact', head: true })
-        .eq('factory_id', factoryId)
-        .eq('status', 'pending');
-
-      // 4. Count generations from factory products
-      const { data: productIds } = await supabase
-        .from('products')
-        .select('id')
-        .eq('factory_id', factoryId);
-
-      let totalGenerations = 0;
-      if (productIds && productIds.length > 0) {
-        const ids = productIds.map(p => p.id);
-        const { count } = await supabase
-          .from('generations')
-          .select('*', { count: 'exact', head: true })
-          .in('product_id', ids);
-        totalGenerations = count ?? 0;
-      }
-
-      setStats({
-        total_products: totalProducts ?? 0,
-        active_products: activeProducts ?? 0,
-        total_followers: totalFollowers ?? 0,
-        pending_requests: pendingRequests ?? 0,
-        total_generations: totalGenerations,
-      });
-
-      // 5. Recent followers (last 5)
-      const { data: followers } = await supabase
-        .from('factory_followers')
-        .select(`
-          id, status, requested_at, responded_at, lojista_id,
-          profiles:lojista_id(full_name, avatar_url)
-        `)
-        .eq('factory_id', factoryId)
-        .order('requested_at', { ascending: false })
-        .limit(5);
-
-      setRecentFollowers((followers as unknown as FollowerRow[]) ?? []);
-
-      // 6. Top products by generation count (simple query)
-      if (productIds && productIds.length > 0) {
-        const ids = productIds.map(p => p.id);
-        const { data: genCounts } = await supabase
-          .from('generations')
-          .select('product_id')
-          .in('product_id', ids);
-
-        if (genCounts) {
-          const countMap: Record<string, number> = {};
-          genCounts.forEach(g => {
-            countMap[g.product_id] = (countMap[g.product_id] || 0) + 1;
-          });
-
-          const { data: prods } = await supabase
-            .from('products')
-            .select('id, name, image_url')
-            .in('id', Object.keys(countMap));
-
-          if (prods) {
-            const sorted = prods
-              .map(p => ({
-                product_id: p.id,
-                product_name: p.name,
-                image_url: p.image_url,
-                generation_count: countMap[p.id] || 0,
-              }))
-              .sort((a, b) => b.generation_count - a.generation_count)
-              .slice(0, 5);
-            setTopProducts(sorted);
-          }
-        }
-      }
-
+      setDashboard(data as FabricanteDashboardData);
+      lastFetchRef.current = Date.now();
     } catch (err) {
-      console.error('FabricanteDashboard error:', err);
+      console.error('[FabricanteDashboard] fetchData error:', err);
       setError('Erro ao carregar dados. Tente novamente.');
     }
 
     setLoading(false);
+    setRefreshing(false);
   }, [supabase]);
 
+  // ─── Mount: buscar dados 1 vez ───
   useEffect(() => {
     let cancelled = false;
-    const run = async () => {
-      // SESSION GUARD: verificar sessão antes de buscar dados
+
+    async function run() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session || cancelled) {
-        console.log('[FabricanteDashboard] Sem sessão ativa — abortando fetchData');
-        return;
-      }
+      if (!session || cancelled) return;
       await fetchData();
-    };
+    }
+
     run();
     return () => { cancelled = true; };
   }, [fetchData, supabase]);
 
+  // ─── Page Visibility: recarregar quando usuário volta à aba (se > 5min) ───
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const stale = Date.now() - lastFetchRef.current > 5 * 60 * 1000;
+        if (stale) fetchData(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [fetchData]);
+
+  // ─── Approve / Reject follower (query direta — ação pontual, não dashboard data) ───
   const handleFollowerAction = async (followerId: string, action: 'approve' | 'reject') => {
     setActionLoading(followerId);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setError('Sessão expirada.'); setActionLoading(null); return; }
+
       const newStatus = action === 'approve' ? 'approved' : 'rejected';
       const { error: updateError } = await supabase
         .from('factory_followers')
@@ -214,7 +194,8 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
       if (updateError) {
         setError(updateError.message);
       } else {
-        await fetchData();
+        // Recarregar silenciosamente após ação
+        await fetchData(true);
       }
     } catch {
       setError('Erro ao processar solicitação.');
@@ -222,34 +203,36 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
     setActionLoading(null);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-6 h-6 animate-spin text-brand-400" />
-      </div>
-    );
-  }
+  // ─── Loading state ───
+  if (loading) return <DashboardSkeleton />;
 
+  // ─── Error state ───
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <AlertCircle size={32} className="text-red-400" />
         <p className="text-dark-400 text-sm">{error}</p>
-        <button onClick={fetchData} className="px-4 py-2 bg-dark-800 text-white rounded-xl text-sm font-600 hover:bg-dark-700 transition-all">
+        <button
+          onClick={() => fetchData()}
+          className="px-4 py-2 bg-dark-800 text-white rounded-xl text-sm font-600 hover:bg-dark-700 transition-all"
+        >
           Tentar novamente
         </button>
       </div>
     );
   }
 
-  if (!hasFactory) {
+  if (!dashboard) return null;
+
+  // ─── Sem fábrica cadastrada ───
+  if (!dashboard.has_factory) {
     return (
       <div className="animate-fade-in-up">
         <div className="text-center py-16 bg-dark-900/40 border border-dark-800/30 rounded-3xl">
           <Factory size={48} className="mx-auto text-dark-600 mb-4" />
           <h2 className="text-lg font-700 text-dark-300 mb-2">Nenhuma fábrica cadastrada</h2>
           <p className="text-dark-500 text-sm mb-6">
-            Crie sua fábrica para começar a disponibilizar produtos para os lojistas.
+            {dashboard.message ?? 'Crie sua fábrica para começar a disponibilizar produtos para os lojistas.'}
           </p>
           <Link
             href="/onboarding"
@@ -262,17 +245,23 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
     );
   }
 
+  const { factory, stats, recent_followers, top_products } = dashboard;
+  if (!factory || !stats) return null;
+
   const statCards = [
     { label: 'Produtos', value: stats.total_products, icon: Package, color: 'text-blue-400', bg: 'bg-blue-600/10' },
     { label: 'Seguidores', value: stats.total_followers, icon: Users, color: 'text-green-400', bg: 'bg-green-600/10' },
-    { label: 'Pendentes', value: stats.pending_requests, icon: Clock,
+    {
+      label: 'Pendentes', value: stats.pending_requests, icon: Clock,
       color: stats.pending_requests > 0 ? 'text-amber-400' : 'text-dark-500',
-      bg: stats.pending_requests > 0 ? 'bg-amber-600/10' : 'bg-dark-800/30' },
+      bg: stats.pending_requests > 0 ? 'bg-amber-600/10' : 'bg-dark-800/30',
+    },
     { label: 'Posts Gerados', value: stats.total_generations, icon: TrendingUp, color: 'text-brand-400', bg: 'bg-brand-600/10' },
   ];
 
   return (
     <div className="animate-fade-in-up space-y-8">
+
       {/* Greeting */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -282,147 +271,54 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
           </h1>
           <p className="text-dark-400 text-sm mt-1">Gestão de catálogo e performance de revenda</p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-900/80 border border-dark-800/50 rounded-full self-start sm:self-auto">
-          <Factory size={14} className="text-blue-400" />
-          <span className="text-[10px] font-700 uppercase tracking-wider text-blue-400">Fabricante</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => fetchData(true)}
+            disabled={refreshing}
+            className="p-2 rounded-xl bg-dark-900/60 border border-dark-800/40 text-dark-400 hover:text-white hover:border-dark-700 transition-all disabled:opacity-50"
+            title="Atualizar dados"
+          >
+            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+          </button>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-900/80 border border-dark-800/50 rounded-full">
+            <Factory size={14} className="text-blue-400" />
+            <span className="text-[10px] font-700 uppercase tracking-wider text-blue-400">Fabricante</span>
+          </div>
         </div>
       </div>
 
       {/* Factory info */}
-      {factory && (
-        <div className="flex items-center gap-4 p-4 bg-dark-900/60 border border-dark-800/40 rounded-2xl">
-          <LogoAvatar src={factory.logo_url} alt={factory.name} size="md" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-700 text-white truncate">{factory.name}</p>
-            <p className="text-xs text-dark-400 mt-0.5">
-              {factory.active ? 'Ativa' : 'Inativa'} &middot; {stats.total_products} produto{stats.total_products !== 1 ? 's' : ''}
-            </p>
-          </div>
+      <div className="flex items-center gap-4 p-4 bg-dark-900/60 border border-dark-800/40 rounded-2xl">
+        <LogoAvatar src={factory.logo_url} alt={factory.name} size="md" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-700 text-white truncate">{factory.name}</p>
+          <p className="text-xs text-dark-400 mt-0.5">
+            {factory.active ? 'Ativa' : 'Inativa'} &middot; {stats.total_products} produto{stats.total_products !== 1 ? 's' : ''}
+          </p>
         </div>
-      )}
+        <Link
+          href="/dashboard/fabricante/perfil"
+          className="text-xs text-brand-400 hover:text-brand-300 transition-colors flex-shrink-0"
+        >
+          Editar →
+        </Link>
+      </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((card) => (
-          <div key={card.label} className={`${card.bg} border border-dark-800/30 rounded-2xl p-4`}>
-            <div className="flex items-center gap-3 mb-2">
-              <card.icon size={18} className={card.color} />
-              <span className="text-xs text-dark-400 font-500">{card.label}</span>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {statCards.map(({ label, value, icon: Icon, color, bg }) => (
+          <div key={label} className={`${bg} border border-dark-800/30 rounded-2xl p-4`}>
+            <div className="flex items-center gap-2 mb-2">
+              <Icon size={16} className={color} />
+              <span className="text-xs text-dark-400 font-500">{label}</span>
             </div>
-            <p className={`text-2xl font-800 ${card.color}`}>{card.value.toLocaleString('pt-BR')}</p>
+            <p className={`text-2xl font-800 ${color}`}>{value}</p>
           </div>
         ))}
       </div>
 
-      {/* Two columns: Pending requests + Top products */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pending follower requests */}
-        <div className="bg-dark-900/60 border border-dark-800/40 rounded-3xl p-6">
-          <h2 className="text-sm font-700 text-white flex items-center gap-2 mb-4">
-            <UserPlus size={16} className="text-amber-400" />
-            Solicitações Pendentes
-            {stats.pending_requests > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] font-800 rounded-full">
-                {stats.pending_requests}
-              </span>
-            )}
-          </h2>
-
-          {recentFollowers.filter((f) => f.status === 'pending').length === 0 ? (
-            <div className="text-center py-8">
-              <Users size={32} className="mx-auto text-dark-600 mb-3" />
-              <p className="text-dark-500 text-xs">Nenhuma solicitação pendente</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recentFollowers
-                .filter((f) => f.status === 'pending')
-                .map((follower) => (
-                  <div key={follower.id} className="flex items-center gap-3 p-3 bg-dark-950/50 border border-dark-800/30 rounded-xl">
-                    <div className="w-9 h-9 rounded-full bg-dark-800 border border-dark-700 flex items-center justify-center overflow-hidden flex-shrink-0">
-                      {follower.profiles?.avatar_url ? (
-                        <img src={follower.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <Users size={16} className="text-dark-400" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-700 text-white truncate">
-                        {follower.profiles?.full_name || 'Lojista'}
-                      </p>
-                      <p className="text-[10px] text-dark-500">
-                        {new Date(follower.requested_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                      </p>
-                    </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => handleFollowerAction(follower.id, 'approve')}
-                        disabled={actionLoading === follower.id}
-                        className="p-2 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 hover:bg-green-500/20 transition-all disabled:opacity-50"
-                        title="Aprovar"
-                      >
-                        {actionLoading === follower.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                      </button>
-                      <button
-                        onClick={() => handleFollowerAction(follower.id, 'reject')}
-                        disabled={actionLoading === follower.id}
-                        className="p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 hover:bg-red-500/20 transition-all disabled:opacity-50"
-                        title="Rejeitar"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          )}
-        </div>
-
-        {/* Top 5 products */}
-        <div className="bg-dark-900/60 border border-dark-800/40 rounded-3xl p-6">
-          <h2 className="text-sm font-700 text-white flex items-center gap-2 mb-4">
-            <BarChart3 size={16} className="text-brand-400" />
-            Top 5 Produtos Mais Usados
-          </h2>
-
-          {topProducts.length === 0 ? (
-            <div className="text-center py-8">
-              <ImageIcon size={32} className="mx-auto text-dark-600 mb-3" />
-              <p className="text-dark-500 text-xs">Nenhuma geração registrada ainda</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {topProducts.map((product, index) => (
-                <div key={product.product_id} className="flex items-center gap-3 p-3 bg-dark-950/50 border border-dark-800/30 rounded-xl">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-800 flex-shrink-0 ${
-                    index === 0 ? 'bg-brand-600/20 text-brand-400' :
-                    index === 1 ? 'bg-blue-600/20 text-blue-400' :
-                    'bg-dark-800/50 text-dark-400'
-                  }`}>
-                    {index + 1}
-                  </div>
-                  <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center p-1 flex-shrink-0">
-                    {product.image_url ? (
-                      <img src={product.image_url} alt={product.product_name} className="max-w-full max-h-full object-contain" />
-                    ) : (
-                      <Package size={16} className="text-slate-300" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-700 text-white truncate">{product.product_name}</p>
-                    <p className="text-[10px] text-dark-500">
-                      {product.generation_count} post{product.generation_count !== 1 ? 's' : ''} gerado{product.generation_count !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Quick actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Link
           href="/dashboard/fabricante/produtos"
           className="flex items-center gap-4 p-4 bg-dark-900/60 border border-dark-800/40 rounded-2xl hover:border-blue-500/30 transition-all group"
@@ -431,25 +327,174 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
             <Package size={20} className="text-blue-400" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-700 text-white">Gerenciar Produtos</p>
-            <p className="text-xs text-dark-400 mt-0.5">Adicione ou edite seus produtos</p>
+            <p className="text-sm font-700 text-white">Produtos</p>
+            <p className="text-xs text-dark-400 mt-0.5">Gerenciar catálogo</p>
           </div>
           <ArrowRight size={16} className="text-dark-600 group-hover:text-blue-400 transition-colors" />
         </Link>
 
         <Link
-          href="/dashboard/setores"
+          href="/dashboard/fabricante/templates"
           className="flex items-center gap-4 p-4 bg-dark-900/60 border border-dark-800/40 rounded-2xl hover:border-brand-500/30 transition-all group"
         >
           <div className="p-3 rounded-xl bg-brand-600/15">
             <Sparkles size={20} className="text-brand-400" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-700 text-white">Testar Geração</p>
-            <p className="text-xs text-dark-400 mt-0.5">Veja como seus produtos ficam nos posts</p>
+            <p className="text-sm font-700 text-white">Templates</p>
+            <p className="text-xs text-dark-400 mt-0.5">Modelos de post</p>
           </div>
           <ArrowRight size={16} className="text-dark-600 group-hover:text-brand-400 transition-colors" />
         </Link>
+
+        <Link
+          href="/dashboard/fabricante/categorias"
+          className="flex items-center gap-4 p-4 bg-dark-900/60 border border-dark-800/40 rounded-2xl hover:border-green-500/30 transition-all group"
+        >
+          <div className="p-3 rounded-xl bg-green-600/15">
+            <BarChart3 size={20} className="text-green-400" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-700 text-white">Categorias</p>
+            <p className="text-xs text-dark-400 mt-0.5">Organizar produtos</p>
+          </div>
+          <ArrowRight size={16} className="text-dark-600 group-hover:text-green-400 transition-colors" />
+        </Link>
+      </div>
+
+      {/* Two-column: Followers + Top Products */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Recent followers */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-700 text-white flex items-center gap-2">
+              <Users size={16} className="text-green-400" />
+              Solicitações Recentes
+              {stats.pending_requests > 0 && (
+                <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] font-800 rounded-full">
+                  {stats.pending_requests}
+                </span>
+              )}
+            </h2>
+          </div>
+
+          {(!recent_followers || recent_followers.length === 0) ? (
+            <div className="text-center py-8 bg-dark-900/40 border border-dark-800/30 rounded-xl">
+              <Users size={24} className="mx-auto text-dark-600 mb-2" />
+              <p className="text-dark-500 text-xs">Nenhuma solicitação ainda</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {recent_followers.map((follower) => (
+                <div
+                  key={follower.id}
+                  className="flex items-center gap-3 p-3 bg-dark-900/40 border border-dark-800/30 rounded-xl"
+                >
+                  {/* Avatar */}
+                  <div className="w-8 h-8 rounded-full bg-dark-700/60 flex items-center justify-center flex-shrink-0">
+                    {follower.profile?.avatar_url ? (
+                      <img src={follower.profile.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      <span className="text-xs font-700 text-dark-400">
+                        {(follower.profile?.full_name ?? 'L')[0].toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Name + status */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-600 text-white truncate">
+                      {follower.profile?.full_name ?? 'Lojista'}
+                    </p>
+                    <span className={`text-[10px] font-600 ${
+                      follower.status === 'approved' ? 'text-green-400' :
+                      follower.status === 'pending' ? 'text-amber-400' : 'text-red-400'
+                    }`}>
+                      {follower.status === 'approved' ? 'Aprovado' :
+                       follower.status === 'pending' ? 'Pendente' : 'Rejeitado'}
+                    </span>
+                  </div>
+
+                  {/* Action buttons (only for pending) */}
+                  {follower.status === 'pending' && (
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        onClick={() => handleFollowerAction(follower.id, 'approve')}
+                        disabled={actionLoading === follower.id}
+                        className="p-1.5 rounded-lg bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-all disabled:opacity-50"
+                        title="Aprovar"
+                      >
+                        <Check size={12} />
+                      </button>
+                      <button
+                        onClick={() => handleFollowerAction(follower.id, 'reject')}
+                        disabled={actionLoading === follower.id}
+                        className="p-1.5 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-all disabled:opacity-50"
+                        title="Rejeitar"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Top products */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-700 text-white flex items-center gap-2">
+              <TrendingUp size={16} className="text-brand-400" />
+              Top Produtos
+            </h2>
+            <Link href="/dashboard/fabricante/produtos" className="text-xs text-brand-400 hover:text-brand-300 transition-colors">
+              Ver todos →
+            </Link>
+          </div>
+
+          {(!top_products || top_products.length === 0) ? (
+            <div className="text-center py-8 bg-dark-900/40 border border-dark-800/30 rounded-xl">
+              <Package size={24} className="mx-auto text-dark-600 mb-2" />
+              <p className="text-dark-500 text-xs">Nenhum produto com posts ainda</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {top_products.map((product, idx) => (
+                <div
+                  key={product.product_id}
+                  className="flex items-center gap-3 p-3 bg-dark-900/40 border border-dark-800/30 rounded-xl"
+                >
+                  {/* Rank */}
+                  <span className="text-xs font-800 text-dark-600 w-4 text-center flex-shrink-0">
+                    {idx + 1}
+                  </span>
+
+                  {/* Thumbnail */}
+                  <div className="w-10 h-10 rounded-lg bg-white border border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                    {product.image_url ? (
+                      <img src={product.image_url} alt={product.product_name} className="w-full h-full object-contain" />
+                    ) : (
+                      <ImageIcon size={16} className="text-gray-400" />
+                    )}
+                  </div>
+
+                  {/* Name */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-600 text-white truncate">{product.product_name}</p>
+                  </div>
+
+                  {/* Count */}
+                  <span className="text-xs font-800 text-brand-400 flex-shrink-0">
+                    {product.generation_count} post{product.generation_count !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
