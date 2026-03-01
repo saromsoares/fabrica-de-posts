@@ -420,7 +420,7 @@ export default function AdminProdutosPage() {
             {products.map(p => (
               <div key={p.id} className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-4">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-14 h-14 rounded-xl bg-white border border-gray-200 overflow-hidden flex-shrink-0 p-1">
+                  <div className="w-14 h-14 rounded-xl bg-dark-800/60 border border-dark-700/40 overflow-hidden flex-shrink-0">
                     {p.image_url
                       ? <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
                       : <div className="w-full h-full flex items-center justify-center"><Package size={20} className="text-dark-600" /></div>}

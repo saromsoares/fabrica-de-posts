@@ -236,7 +236,7 @@ export default function AdminFabricasPage() {
   };
 
   /* ─── Styles ─── */
-  const inputClass = 'w-full px-4 py-2.5 bg-[#0f0f1a] border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-[#e85d75]/50 focus:ring-1 focus:ring-[#e85d75]/20 transition-all text-sm';
+  const inputClass = 'w-full px-4 py-2.5 bg-dark-950 border border-dark-700/50 rounded-xl text-white placeholder:text-dark-500 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/15 transition-all text-sm';
   const textareaClass = `${inputClass} resize-none`;
 
   /* ─── Step labels ─── */
@@ -257,7 +257,7 @@ export default function AdminFabricasPage() {
         <h1 className="font-display text-2xl font-800">Fábricas</h1>
         <button
           onClick={() => { clearMessages(); setForm(emptyForm); setEditingId(null); setLogoUploadedUrl(null); setStep(1); setShowForm(true); }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#e85d75] hover:bg-[#d44d65] text-white text-sm font-600 rounded-xl transition-all"
+          className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-600 rounded-xl transition-all"
         >
           <Plus size={16} /> Nova fábrica
         </button>
@@ -273,17 +273,17 @@ export default function AdminFabricasPage() {
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={handleCloseForm}>
           <div
-            className="bg-[#0f0f1a] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto"
+            className="bg-dark-950 border border-dark-800/50 rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal header */}
-            <div className="flex items-center justify-between p-6 border-b border-white/10">
+            <div className="flex items-center justify-between p-6 border-b border-dark-800/50">
               <div>
                 <h2 className="font-display font-700 text-lg">{editingId ? 'Editar fábrica' : 'Nova fábrica'}</h2>
                 <p className="text-white/40 text-xs mt-0.5">Passo {step} de {STEPS.length} — {STEPS[step - 1]}</p>
               </div>
-              <button onClick={handleCloseForm} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
-                <X size={20} className="text-white/50" />
+              <button onClick={handleCloseForm} className="p-1.5 rounded-lg hover:bg-dark-800/60 transition-colors" aria-label="Fechar">
+                <X size={20} className="text-dark-400" />
               </button>
             </div>
 
@@ -291,8 +291,8 @@ export default function AdminFabricasPage() {
             <div className="flex gap-1 px-6 pt-4">
               {STEPS.map((label, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                  <div className={`h-1.5 w-full rounded-full transition-all ${i + 1 <= step ? 'bg-[#e85d75]' : 'bg-white/10'}`} />
-                  <span className={`text-[10px] font-500 ${i + 1 === step ? 'text-[#e85d75]' : 'text-white/30'}`}>{label}</span>
+                  <div className={`h-1.5 w-full rounded-full transition-all ${i + 1 <= step ? 'bg-brand-500' : 'bg-dark-700/40'}`} />
+                  <span className={`text-[10px] font-500 ${i + 1 === step ? 'text-brand-400' : 'text-dark-500'}`}>{label}</span>
                 </div>
               ))}
             </div>
@@ -347,7 +347,7 @@ export default function AdminFabricasPage() {
                     type="checkbox"
                     checked={form.active}
                     onChange={(e) => setForm({ ...form, active: e.target.checked })}
-                    className="w-4 h-4 rounded border-white/20 bg-[#0f0f1a] text-[#e85d75] focus:ring-[#e85d75]/20"
+                    className="w-4 h-4 rounded border-dark-600/40 bg-dark-950 text-brand-500 focus:ring-brand-500/20"
                   />
                   Fábrica ativa (visível para lojistas)
                 </label>
@@ -401,8 +401,8 @@ export default function AdminFabricasPage() {
             {/* ─── STEP 3: Marca & IA ─── */}
             {step === 3 && (
               <div className="p-6 space-y-5">
-                <div className="flex items-center gap-2 p-3 bg-[#e85d75]/10 border border-[#e85d75]/20 rounded-xl">
-                  <Sparkles size={16} className="text-[#e85d75] flex-shrink-0" />
+                <div className="flex items-center gap-2 p-3 bg-brand-600/10 border border-brand-500/20 rounded-xl">
+                  <Sparkles size={16} className="text-brand-400 flex-shrink-0" />
                   <p className="text-xs text-white/60">Estes dados são usados pela IA para gerar posts personalizados para os lojistas.</p>
                 </div>
 
@@ -478,7 +478,7 @@ export default function AdminFabricasPage() {
                 <p className="text-white/50 text-sm">Revise os dados antes de {editingId ? 'atualizar' : 'criar'} a fábrica.</p>
 
                 {/* Card resumo */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                <div className="bg-dark-900/40 border border-dark-800/40 rounded-2xl p-5 space-y-4">
                   {/* Logo + nome */}
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-xl bg-white border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0 p-1.5">
@@ -551,11 +551,11 @@ export default function AdminFabricasPage() {
             )}
 
             {/* ─── Footer navigation ─── */}
-            <div className="flex items-center justify-between p-6 border-t border-white/10">
+            <div className="flex items-center justify-between p-6 border-t border-dark-800/50">
               <button
                 onClick={() => { clearMessages(); setStep(s => s - 1); }}
                 disabled={step === 1}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed text-white text-sm font-500 rounded-xl transition-all"
+                className="flex items-center gap-2 px-4 py-2.5 bg-dark-800/60 hover:bg-dark-700/60 disabled:opacity-30 disabled:cursor-not-allowed text-white text-sm font-500 rounded-xl transition-all"
               >
                 <ChevronLeft size={16} /> Voltar
               </button>
@@ -563,7 +563,7 @@ export default function AdminFabricasPage() {
               {step < 4 ? (
                 <button
                   onClick={handleNext}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-[#e85d75] hover:bg-[#d44d65] text-white text-sm font-600 rounded-xl transition-all"
+                  className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-600 rounded-xl transition-all"
                 >
                   Próximo <ChevronRight size={16} />
                 </button>
@@ -571,7 +571,7 @@ export default function AdminFabricasPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-[#e85d75] hover:bg-[#d44d65] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-700 rounded-xl transition-all"
+                  className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-700 rounded-xl transition-all"
                 >
                   {saving ? (
                     <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Salvando...</>
@@ -587,9 +587,9 @@ export default function AdminFabricasPage() {
 
       {/* ═══ LISTA ═══ */}
       {loading ? (
-        <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-24 rounded-2xl bg-white/5 animate-pulse" />)}</div>
+        <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-24 rounded-2xl skeleton-shimmer" />)}</div>
       ) : factories.length === 0 ? (
-        <div className="text-center py-20 bg-white/5 border border-white/10 rounded-2xl">
+        <div className="text-center py-20 bg-dark-900/40 border border-dark-800/30 rounded-2xl">
           <Factory size={48} className="mx-auto text-white/20 mb-4" />
           <p className="text-white/40 mb-2">Nenhuma fábrica cadastrada.</p>
           <p className="text-white/25 text-sm">Clique em "Nova fábrica" para começar.</p>
@@ -597,24 +597,24 @@ export default function AdminFabricasPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {factories.map((f) => (
-            <div key={f.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-white/20 transition-all">
+            <div key={f.id} className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-5 hover:border-dark-700/60 transition-all">
               <div className="flex items-center gap-4 mb-4">
                 {/* Logo com fundo branco */}
-                <div className="w-14 h-14 rounded-xl bg-white border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0 p-1.5">
+                <div className="w-14 h-14 rounded-xl bg-dark-800/60 border border-dark-700/40 flex items-center justify-center overflow-hidden flex-shrink-0">
                   {f.logo_url ? (
                     <img src={f.logo_url} alt={f.name} className="w-full h-full object-contain" />
                   ) : (
-                    <Factory size={22} className="text-gray-400" />
+                    <Factory size={22} className="text-dark-500" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-display font-700 truncate text-white">{f.name}</h3>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-500 ${f.active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/10 text-white/30'}`}>
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-500 ${f.active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-dark-700/60 text-dark-400'}`}>
                       {f.active ? 'Ativa' : 'Inativa'}
                     </span>
                     {f.sectors && (
-                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-500 bg-white/10 text-white/50">
+                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-500 bg-dark-700/40 text-dark-400">
                         {f.sectors.name}
                       </span>
                     )}
@@ -627,13 +627,13 @@ export default function AdminFabricasPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(f)}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-white/10 hover:bg-white/15 rounded-xl text-xs text-white/60 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-dark-800/60 hover:bg-dark-700/60 rounded-xl text-xs text-dark-300 hover:text-white transition-colors"
                 >
                   <Pencil size={12} /> Editar
                 </button>
                 <button
                   onClick={() => handleDelete(f.id, f.name)}
-                  className="flex items-center justify-center gap-1.5 px-4 py-2 bg-white/10 hover:bg-red-500/10 rounded-xl text-xs text-white/40 hover:text-red-400 transition-colors"
+                  className="flex items-center justify-center gap-1.5 px-4 py-2 bg-dark-800/60 hover:bg-red-500/10 rounded-xl text-xs text-dark-400 hover:text-red-400 transition-colors"
                 >
                   <Trash2 size={12} />
                 </button>
