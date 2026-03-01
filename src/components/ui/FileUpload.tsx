@@ -215,8 +215,8 @@ export function FileUpload({
         </div>
       )}
 
-      {/* Hint de requisitos */}
-      <p className="text-xs text-white/30">{hint}</p>
+      {/* Hint de requisitos — padrão v8 */}
+      <p className="text-xs text-gray-400 mt-1">{hint}</p>
     </div>
   );
 }
