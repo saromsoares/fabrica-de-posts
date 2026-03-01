@@ -114,8 +114,8 @@ export type Template = {
   active: boolean | null;
   created_at: string | null;
   updated_at: string | null;
-  /** Nível de acesso do template: basico | intermediario | premium | super_premium */
-  level: string | null;
+  /** Nível de acesso do template: basico | intermediario | premium | super_premium. NULL = acessível para todos. */
+  level?: string | null;
 };
 
 export type Generation = {
