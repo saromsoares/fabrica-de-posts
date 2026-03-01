@@ -530,33 +530,43 @@ export default function EstudioPage() {
 
   useEffect(() => { generateCaptions(); }, [generateCaptions]);
 
-  // Gerar IA copy
+  // Gerar IA copy — usa Edge Function generate-post diretamente (sem duplicar lógica)
   const handleGenerateAiCaption = async () => {
     if (!product || !brandKit) return;
     setAiLoading(true);
     setAiError(null);
     try {
-      const res = await fetch('/api/generate-copy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productName: product.name,
-          price: fields.price || undefined,
-          condition: fields.condition || undefined,
-          whatsapp: brandKit.whatsapp || undefined,
-          instagram: brandKit.instagram_handle || undefined,
-          storeName: brandKit.store_name || undefined,
-          factoryName: product.factory?.name || undefined,
-          objective: captionStyle,
-        }),
+      // SESSION GUARD: verificar sessão antes de chamar Edge Function
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Você precisa estar logado para gerar legendas.');
+
+      const { data, error } = await supabase.functions.invoke('generate-post', {
+        body: {
+          product_id: product.id,
+          format: selectedTemplate?.format || 'feed',
+          tone: captionStyle,
+          custom_prompt: fields.condition || undefined,
+        },
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro ao gerar legenda.');
-      setAiCaption(data.caption);
+
+      if (error) throw new Error(error.message || 'Erro ao gerar legenda.');
+      if (!data?.success) throw new Error(data?.error || 'Erro ao gerar legenda.');
+
+      // Edge Function retorna generation.caption (texto principal)
+      // ou captions[] (array de variações) — usar o primeiro disponível
+      const caption: string =
+        data.generation?.caption ||
+        (Array.isArray(data.generation?.captions) && data.generation.captions[0]?.text) ||
+        '';
+
+      if (!caption) throw new Error('A IA não retornou nenhum texto. Tente novamente.');
+
+      setAiCaption(caption);
       setAiCaptionSaved(true);
+
       // Auto-update no banco quando a IA retorna
       if (generationId) {
-        await supabase.from('generations').update({ caption: data.caption }).eq('id', generationId);
+        await supabase.from('generations').update({ caption }).eq('id', generationId);
       }
     } catch (err) {
       setAiError(extractError(err));
