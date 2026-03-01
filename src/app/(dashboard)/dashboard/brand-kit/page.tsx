@@ -109,7 +109,7 @@ export default function BrandKitPage() {
         <div>
           <label className="block text-sm font-500 text-dark-300 mb-3">Logo da loja</label>
           <FileUpload
-            type="logo"
+            type="brand-logo"
             currentUrl={logoUploadedUrl}
             onUploadComplete={(url) => { setLogoUploadedUrl(url); setLogoError(null); }}
             onError={(msg) => setLogoError(msg)}

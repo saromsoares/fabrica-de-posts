@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase-browser';
 import { Loader2 } from 'lucide-react';
 import FabricanteDashboard from '@/components/dashboard/FabricanteDashboard';
 import LojistaDashboard from '@/components/dashboard/LojistaDashboard';
+import { useAdminTestMode } from '@/hooks/useAdminTestMode';
 
 type UserRole = 'lojista' | 'fabricante' | 'admin' | 'super_admin';
 
@@ -13,6 +14,7 @@ export default function DashboardHome() {
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('');
   const [userRole, setUserRole] = useState<UserRole>('lojista');
+  const { testRole } = useAdminTestMode();
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +49,12 @@ export default function DashboardHome() {
   }
 
   // Role-based dashboard rendering
-  if (userRole === 'fabricante' || userRole === 'admin' || userRole === 'super_admin') {
+  // Se o admin está em modo de teste, usar o testRole
+  const effectiveRole = (userRole === 'admin' || userRole === 'super_admin') && testRole
+    ? testRole
+    : userRole;
+
+  if (effectiveRole === 'fabricante' || (effectiveRole !== 'lojista' && (userRole === 'admin' || userRole === 'super_admin') && !testRole)) {
     return <FabricanteDashboard userName={userName} />;
   }
 

@@ -762,7 +762,7 @@ function LojistaWizard({
           </h2>
 
           <FileUpload
-            type="logo"
+            type="brand-logo"
             currentUrl={data.logoUrl || null}
             onUploadComplete={(url) => set('logoUrl', url)}
             onError={(msg) => setError(msg)}
