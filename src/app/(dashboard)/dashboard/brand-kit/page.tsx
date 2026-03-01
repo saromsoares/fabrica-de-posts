@@ -6,6 +6,9 @@ import { FileUpload } from '@/components/ui/FileUpload';
 import { useRouter } from 'next/navigation';
 import { Check, Palette } from 'lucide-react';
 import type { BrandKit } from '@/types/database';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('BrandKit');
 
 export default function BrandKitPage() {
   const [brandKit, setBrandKit] = useState<Partial<BrandKit>>({
@@ -79,7 +82,7 @@ export default function BrandKitPage() {
         if (isNew) router.push('/dashboard');
       }, 1500);
     } catch (err) {
-      console.error(err);
+      log.error('Save failed', { error: err instanceof Error ? err.message : String(err) });
     } finally {
       setSaving(false);
     }

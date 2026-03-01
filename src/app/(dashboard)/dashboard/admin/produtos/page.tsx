@@ -6,6 +6,9 @@ import { FileUpload } from '@/components/ui/FileUpload';
 import { Plus, Pencil, Trash2, X, AlertCircle, CheckCircle, Package } from 'lucide-react';
 import { extractError } from '@/lib/utils';
 import type { Product, Category, Factory } from '@/types/database';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('AdminProdutos');
 
 const PAGE_SIZE = 20;
 
@@ -80,7 +83,7 @@ export default function AdminProdutosPage() {
       setProducts((prods || []) as (Product & { factory?: Factory | null; category?: Category | null })[]);
       setTotalProductCount(prodCount ?? 0);
     } catch (err) {
-      console.error('fetchData error:', err);
+      log.error('fetchData failed', { error: err instanceof Error ? err.message : String(err) });
       setError(`Erro ao carregar dados: ${extractError(err)}`);
     } finally {
       setLoading(false);

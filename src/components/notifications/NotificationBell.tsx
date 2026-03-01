@@ -4,6 +4,9 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { Bell, X, Check, CheckCheck, Trash2, Loader2 } from 'lucide-react';
 import type { Notification } from '@/types/database';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('NotificationBell');
 
 const NOTIFICATION_ICONS: Record<string, string> = {
   follow_request: '🔔',
@@ -27,7 +30,7 @@ export default function NotificationBell() {
       // SESSION GUARD: verificar sessão antes de acessar dados
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        console.log('[NotificationBell] Sem sessão ativa — abortando fetchUnreadCount');
+        log.debug('No active session — aborting fetchUnreadCount');
         return;
       }
 
@@ -52,7 +55,7 @@ export default function NotificationBell() {
       // SESSION GUARD: verificar sessão antes de acessar dados
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        console.log('[NotificationBell] Sem sessão ativa — abortando fetchNotifications');
+        log.debug('No active session — aborting fetchNotifications');
         setLoading(false);
         return;
       }

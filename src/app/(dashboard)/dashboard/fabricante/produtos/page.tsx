@@ -13,6 +13,9 @@ import {
   FolderOpen, Sparkles,
 } from 'lucide-react';
 import type { Product, Category, Factory, Profile } from '@/types/database';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('FabricanteProdutos');
 
 /* ═══════════════════════════════════════
    TYPES
@@ -128,7 +131,7 @@ export default function FabricanteProdutosPage() {
       setProducts((prods || []) as ProductWithCategory[]);
 
     } catch (err) {
-      console.error('fetchData error:', err);
+      log.error('fetchData failed', { error: err instanceof Error ? err.message : String(err) });
       setError('Erro ao carregar dados.');
     }
     setLoading(false);

@@ -2,6 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase-browser';
+import { createLogger } from '@/lib/logger';
+
+const logSession = createLogger('SessionGuard');
+const logEdge = createLogger('EdgeFunction');
+const logHook = createLogger('useAuthenticatedFunction');
 
 /**
  * Garante que existe uma sessão ativa e que o access_token está fresco
@@ -19,18 +24,18 @@ async function ensureFreshSession() {
   // Step 1: Verificar se existe sessão no cache
   const { data: { session: cachedSession } } = await supabase.auth.getSession();
   if (!cachedSession) {
-    console.error('[SessionGuard] Sem sessão ativa no cache — abortando chamada Edge Function');
+    logSession.warn('No active session in cache — aborting Edge Function call');
     return { supabase, session: null, error: 'Sem sessão ativa' };
   }
 
   // Step 2: getUser() força validação server-side e refresh automático do token
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) {
-    console.error('[SessionGuard] getUser() falhou:', userError?.message);
+    logSession.error('getUser() failed', { error: userError?.message });
     // Tentar refresh explícito como última tentativa
     const { error: refreshError } = await supabase.auth.refreshSession();
     if (refreshError) {
-      console.error('[SessionGuard] refreshSession() também falhou:', refreshError.message);
+      logSession.error('refreshSession() also failed', { error: refreshError.message });
       return { supabase, session: null, error: 'Sessão expirada — faça login novamente' };
     }
   }
@@ -38,11 +43,13 @@ async function ensureFreshSession() {
   // Step 3: Pegar sessão atualizada após getUser()/refresh
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
-    console.error('[SessionGuard] Sessão null após refresh — usuário precisa fazer login');
+    logSession.error('Session null after refresh — user must login');
     return { supabase, session: null, error: 'Sessão não encontrada após refresh' };
   }
 
-  console.log('[SessionGuard] Sessão válida, token expira em:', new Date((session.expires_at || 0) * 1000).toISOString());
+  logSession.debug('Session valid', {
+    expiresAt: new Date((session.expires_at || 0) * 1000).toISOString(),
+  });
   return { supabase, session, error: null };
 }
 
@@ -73,7 +80,7 @@ export function useAuthenticatedFunction<T = unknown>(
     // SESSION GUARD: Garante sessão ativa antes de qualquer chamada
     const { supabase, session, error: authError } = await ensureFreshSession();
     if (authError || !session) {
-      console.error(`[useAuthenticatedFunction] ${functionName}: sessão inválida —`, authError);
+      logHook.error(`${functionName}: invalid session`, { error: authError });
       if (!cancelledRef.current) {
         setError(authError || 'Sessão não autenticada');
       }
@@ -86,18 +93,18 @@ export function useAuthenticatedFunction<T = unknown>(
     setError(null);
 
     try {
-      console.log(`[EdgeFunction] Chamando ${functionName}...`);
+      logEdge.debug(`Calling ${functionName}`);
       const { data: result, error: fnError } = await supabase.functions.invoke(
         functionName,
         { body: overrideBody || body }
       );
 
       if (fnError) {
-        console.error(`[EdgeFunction] ${functionName} erro:`, fnError.message);
+        logEdge.error(`${functionName} error`, { error: fnError.message });
 
         // Se 401, tentar refresh explícito + retry UMA VEZ
         if (fnError.message?.includes('401') || fnError.message?.includes('Unauthorized') || fnError.message?.includes('non-2xx')) {
-          console.log(`[EdgeFunction] ${functionName}: 401 detectado, tentando refresh + retry...`);
+          logEdge.warn(`${functionName}: 401 detected — attempting refresh + retry`);
           const { error: refreshError } = await supabase.auth.refreshSession();
           if (!refreshError) {
             // Verificar sessão novamente após refresh
@@ -108,17 +115,17 @@ export function useAuthenticatedFunction<T = unknown>(
                 { body: overrideBody || body }
               );
               if (!retryError && !cancelledRef.current) {
-                console.log(`[EdgeFunction] ${functionName}: retry bem-sucedido`);
+                logEdge.info(`${functionName}: retry succeeded`);
                 setData(retryResult as T);
                 setLoading(false);
                 return retryResult as T;
               }
               if (retryError) {
-                console.error(`[EdgeFunction] ${functionName}: retry também falhou:`, retryError.message);
+                logEdge.error(`${functionName}: retry also failed`, { error: retryError.message });
               }
             }
           } else {
-            console.error(`[EdgeFunction] ${functionName}: refreshSession falhou:`, refreshError.message);
+            logEdge.error(`${functionName}: refreshSession failed`, { error: refreshError.message });
           }
         }
 
@@ -136,7 +143,7 @@ export function useAuthenticatedFunction<T = unknown>(
       return result as T;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro desconhecido';
-      console.error(`[EdgeFunction] ${functionName}: exceção:`, message);
+      logEdge.error(`${functionName}: exception`, { error: message });
       if (!cancelledRef.current) {
         setError(message);
       }
@@ -155,7 +162,7 @@ export function useAuthenticatedFunction<T = unknown>(
       // SESSION GUARD no useEffect
       const { session } = await ensureFreshSession();
       if (!session || cancelledRef.current) {
-        console.log(`[useAuthenticatedFunction] ${functionName}: useEffect abortado — sem sessão ou cancelled`);
+        logHook.debug(`${functionName}: useEffect aborted — no session or cancelled`);
         return;
       }
       await invoke();
@@ -182,23 +189,25 @@ export async function invokeWithAuth<T = unknown>(
   functionName: string,
   body?: Record<string, unknown>
 ): Promise<{ data: T | null; error: string | null }> {
+  const logInvoke = createLogger('invokeWithAuth');
+
   // SESSION GUARD: Garante sessão ativa antes de qualquer chamada
   const { supabase, session, error: authError } = await ensureFreshSession();
   if (authError || !session) {
-    console.error(`[invokeWithAuth] ${functionName}: sessão inválida —`, authError);
+    logInvoke.error(`${functionName}: invalid session`, { error: authError });
     return { data: null, error: authError || 'Sessão não autenticada' };
   }
 
   try {
-    console.log(`[invokeWithAuth] Chamando ${functionName}...`);
+    logInvoke.debug(`Calling ${functionName}`);
     const { data, error } = await supabase.functions.invoke(functionName, { body });
 
     if (error) {
-      console.error(`[invokeWithAuth] ${functionName} erro:`, error.message);
+      logInvoke.error(`${functionName} error`, { error: error.message });
 
       // Se 401, tentar refresh + retry UMA VEZ
       if (error.message?.includes('401') || error.message?.includes('Unauthorized') || error.message?.includes('non-2xx')) {
-        console.log(`[invokeWithAuth] ${functionName}: 401 detectado, tentando refresh + retry...`);
+        logInvoke.warn(`${functionName}: 401 detected — attempting refresh + retry`);
         const { error: refreshError } = await supabase.auth.refreshSession();
         if (!refreshError) {
           // Verificar sessão novamente
@@ -206,14 +215,14 @@ export async function invokeWithAuth<T = unknown>(
           if (freshSession) {
             const { data: retryData, error: retryError } = await supabase.functions.invoke(functionName, { body });
             if (!retryError) {
-              console.log(`[invokeWithAuth] ${functionName}: retry bem-sucedido`);
+              logInvoke.info(`${functionName}: retry succeeded`);
               return { data: retryData as T, error: null };
             }
-            console.error(`[invokeWithAuth] ${functionName}: retry também falhou:`, retryError.message);
+            logInvoke.error(`${functionName}: retry also failed`, { error: retryError.message });
             return { data: null, error: retryError.message || 'Erro após retry' };
           }
         } else {
-          console.error(`[invokeWithAuth] ${functionName}: refreshSession falhou:`, refreshError.message);
+          logInvoke.error(`${functionName}: refreshSession failed`, { error: refreshError.message });
         }
       }
       return { data: null, error: error.message || 'Erro na chamada da função' };
@@ -222,7 +231,7 @@ export async function invokeWithAuth<T = unknown>(
     return { data: data as T, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.error(`[invokeWithAuth] ${functionName}: exceção:`, message);
+    logInvoke.error(`${functionName}: exception`, { error: message });
     return { data: null, error: message };
   }
 }

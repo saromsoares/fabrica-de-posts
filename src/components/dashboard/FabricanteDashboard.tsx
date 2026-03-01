@@ -9,6 +9,10 @@ import {
   Image as ImageIcon, Sparkles, RefreshCw, BarChart3,
 } from 'lucide-react';
 import LogoAvatar from '@/components/ui/LogoAvatar';
+import { createLogger } from '@/lib/logger';
+import { handleApiError } from '@/lib/api-errors';
+
+const log = createLogger('FabricanteDashboard');
 
 /* ═══════════════════════════════════════
    TYPES — contrato idêntico ao fabricante-stats v3
@@ -136,15 +140,25 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
         return;
       }
 
-      const { data, error: fnError } = await supabase.functions.invoke('fabricante-stats');
+      const result = await supabase.functions.invoke('fabricante-stats');
+      const apiErr = handleApiError('fabricante-stats', result);
+      if (apiErr.code !== 'OK') {
+        log.error('fetchData failed', { code: apiErr.code, rid: apiErr.requestId });
+        setError(apiErr.message || 'Erro ao carregar dados. Tente novamente.');
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
 
-      if (fnError) throw fnError;
+      const data = result.data;
       if (!data) throw new Error('Resposta vazia da Edge Function');
 
+      log.info('Dashboard data loaded');
       setDashboard(data as FabricanteDashboardData);
       lastFetchRef.current = Date.now();
     } catch (err) {
-      console.error('[FabricanteDashboard] fetchData error:', err);
+      const message = err instanceof Error ? err.message : String(err);
+      log.error('fetchData exception', { error: message });
       setError('Erro ao carregar dados. Tente novamente.');
     }
 
