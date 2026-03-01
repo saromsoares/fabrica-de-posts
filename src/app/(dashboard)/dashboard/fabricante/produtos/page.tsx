@@ -167,24 +167,24 @@ export default function FabricanteProdutosPage() {
     return result;
   }, [products, filterCategory, searchQuery]);
 
-  /* ─── Image handling ─── */
+  /* ─── Image handling (via validate-upload Edge Function) ─── */
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Imagem muito grande. Máximo 5MB.');
+    // Quick client-side pre-check
+    if (!file.type.includes('png')) {
+      setError('A imagem precisa ser PNG quadrada, mínimo 1080x1080px.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Imagem muito grande. Máximo 10MB.');
       return;
     }
 
-    const validation = await validateProductImage(file);
-    if (!validation.valid) {
-      setError(validation.error!);
-      return;
-    }
-
-    setImageFile(file);
+    // Show local preview immediately
     setImagePreview(URL.createObjectURL(file));
+    setImageFile(file);
     setError(null);
   };
 
@@ -233,11 +233,18 @@ export default function FabricanteProdutosPage() {
     try {
       let imageUrl: string | undefined;
       if (imageFile) {
-        const ext = imageFile.name.split('.').pop()?.toLowerCase() || 'png';
-        const safeName = form.name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
-        const filename = `${Date.now()}-${safeName}.${ext}`;
-        const result = await uploadImage(imageFile, 'fabrica/products', filename, { contentType: imageFile.type });
-        imageUrl = result.url;
+        // SESSION GUARD
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { setError('Sessão expirada. Faça login novamente.'); setSaving(false); return; }
+
+        // Upload via validate-upload Edge Function
+        const formData = new FormData();
+        formData.append('file', imageFile);
+        formData.append('type', 'product');
+        const { data: uploadRes, error: uploadErr } = await supabase.functions.invoke('validate-upload', { body: formData });
+        if (uploadErr) throw new Error(uploadErr.message);
+        if (!uploadRes?.url) throw new Error(uploadRes?.error || 'A imagem precisa ser PNG quadrada, mínimo 1080x1080px.');
+        imageUrl = uploadRes.url;
       }
 
       const payload = {
