@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
@@ -15,7 +16,6 @@ import { extractDominantColor } from '@/lib/image-processing';
 import { getFontById, loadFont } from '@/lib/fonts';
 import AIGenerationMode from '@/components/studio/AIGenerationMode';
 import { createLogger } from '@/lib/logger';
-import { handleApiError } from '@/lib/api-errors';
 
 const log = createLogger('Estudio');
 
@@ -1220,7 +1220,7 @@ export default function EstudioPage() {
                 {VISUAL_TEMPLATES.filter(t => templateFilter === 'all' || t.format === templateFilter).map((t) => {
                   const isStory = t.format === 'story';
                   const miniW = 160;
-                  const miniH = isStory ? Math.round(miniW * (1920 / 1080)) : miniW;
+                  const _miniH = isStory ? Math.round(miniW * (1920 / 1080)) : miniW;
                   const miniScale = miniW / 1080;
                   const tIsLight = t.id === 'minimalista-premium' || t.id === 'institucional-clean';
                   return (

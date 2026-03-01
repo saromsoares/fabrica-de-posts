@@ -1,11 +1,12 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { invokeWithAuth } from '@/hooks/useAuthenticatedFunction';
 import {
   Sparkles, ChevronRight, Check, Download, Copy,
-  RefreshCw, AlertTriangle, ArrowLeft, Loader2,
+  AlertTriangle, ArrowLeft, Loader2,
   ImageIcon, Wand2, Flame, Gem, Zap, PenLine,
 } from 'lucide-react';
 import ShareButtons from '@/components/ShareButtons';

@@ -10,7 +10,7 @@ import { FileUpload } from '@/components/ui/FileUpload';
 import {
   Loader2, Plus, Pencil, Trash2, X, Package,
   AlertCircle, CheckCircle, Search, Filter, Eye, EyeOff,
-  FolderOpen, Sparkles,
+  FolderOpen,
 } from 'lucide-react';
 import type { Product, Category, Factory, Profile } from '@/types/database';
 import { createLogger } from '@/lib/logger';

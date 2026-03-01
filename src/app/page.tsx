@@ -125,7 +125,7 @@ export default async function LandingPage() {
               const features = PLAN_FEATURES[plan.plan_name] ?? [];
               const cta = PLAN_CTA[plan.plan_name] ?? 'Assinar';
               const limitLabel = formatLimit(plan.monthly_generations);
-              const priceLabel = formatPlanPrice(plan.price_brl);
+              const _priceLabel = formatPlanPrice(plan.price_brl);
 
               return (
                 <div

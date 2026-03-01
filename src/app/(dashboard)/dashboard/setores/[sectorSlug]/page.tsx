@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { invokeWithAuth } from '@/hooks/useAuthenticatedFunction';
 import Link from 'next/link';
-import { Loader2, ArrowLeft, Factory as FactoryIcon, CheckCircle, Clock, UserPlus, UserMinus, Search } from 'lucide-react';
+import { Loader2, ArrowLeft, Factory as FactoryIcon, CheckCircle, Clock, UserPlus, Search } from 'lucide-react';
 import LogoAvatar from '@/components/ui/LogoAvatar';
 import type { Sector, Factory, FactoryFollower } from '@/types/database';
 import { createLogger } from '@/lib/logger';
@@ -26,7 +26,7 @@ export default function SectorFactoriesPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [userId, setUserId] = useState<string | null>(null);
+  const [_userId, setUserId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();

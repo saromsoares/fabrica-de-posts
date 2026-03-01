@@ -17,6 +17,7 @@ export function useAdminTestMode() {
     if (typeof window === 'undefined') return;
     const stored = sessionStorage.getItem(STORAGE_KEY) as TestRole | null;
     if (stored === 'lojista' || stored === 'fabricante') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTestRoleState(stored);
     }
   }, []);

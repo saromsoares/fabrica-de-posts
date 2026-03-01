@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { Factory } from 'lucide-react';
 
@@ -53,7 +54,7 @@ export default function LogoAvatar({
           loading="lazy"
         />
       ) : (
-        <Factory size={iconSizes[size]} className="text-gray-400" />
+        <Factory size={iconSizes[size]} className="text-dark-500" />
       )}
     </div>
   );

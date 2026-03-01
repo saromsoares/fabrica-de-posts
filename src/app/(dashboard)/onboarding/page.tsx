@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, Suspense } from 'react';
 import { createClient } from '@/lib/supabase-browser';
@@ -579,7 +580,7 @@ function LojistaWizard({
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [factories, setFactories] = useState<FactoryWithFollowInfo[]>([]);
   const [expandedSector, setExpandedSector] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [_uploading, _setUploading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);

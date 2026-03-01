@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase-browser';
@@ -447,7 +448,7 @@ function TemplateCard({
   onDelete: (id: string) => void;
   onPreview: (t: Template) => void;
 }) {
-  const layout = (template.config_json as Record<string, string>)?.layout || '';
+  const _layout = (template.config_json as Record<string, string>)?.layout || '';
   const desc = (template.config_json as Record<string, string>)?.description || template.name;
 
   return (

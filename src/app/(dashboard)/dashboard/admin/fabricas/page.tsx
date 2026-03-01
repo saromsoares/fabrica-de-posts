@@ -1,13 +1,13 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import {
-  Plus, Pencil, Trash2, X, Upload, AlertCircle, Factory,
+  Plus, Pencil, Trash2, X, AlertCircle, Factory,
   ChevronRight, ChevronLeft, Check, Globe, Phone, Sparkles,
   Users, Target, Megaphone, Building2
 } from 'lucide-react';
-import LogoAvatar from '@/components/ui/LogoAvatar';
 import { FileUpload } from '@/components/ui/FileUpload';
 import { extractError } from '@/lib/utils';
 

@@ -37,8 +37,8 @@ const lojistaNav: NavItem[] = [
 const fabricanteNav: NavItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
   { href: '/dashboard/fabricante/produtos', icon: Package, label: 'Produtos', exact: false },
-  { href: '/dashboard/fabricante/categorias', icon: FolderOpen, label: 'Categorias', exact: false },
   { href: '/dashboard/fabricante/templates', icon: LayoutTemplate, label: 'Templates', exact: true },
+  { href: '/dashboard/fabricante/categorias', icon: FolderOpen, label: 'Categorias', exact: false },
   { href: '/dashboard/fabricante/perfil', icon: Settings, label: 'Perfil da Fábrica', exact: true },
   { href: '/dashboard/conta', icon: User, label: 'Conta', exact: true },
 ];
@@ -76,7 +76,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => { cancelled = true; };
   }, [supabase]);
 
-  // Close sidebar on route change
+  // Close sidebar on route change — setState in effect is intentional here (syncing sidebar with route)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setSidebarOpen(false); }, [pathname]);
 
   const handleLogout = async () => {
