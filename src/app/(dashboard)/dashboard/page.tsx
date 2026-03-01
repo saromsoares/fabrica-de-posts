@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 import FabricanteDashboard from '@/components/dashboard/FabricanteDashboard';
 import LojistaDashboard from '@/components/dashboard/LojistaDashboard';
 
-type UserRole = 'lojista' | 'fabricante' | 'admin';
+type UserRole = 'lojista' | 'fabricante' | 'admin' | 'super_admin';
 
 export default function DashboardHome() {
   const supabase = createClient();
@@ -44,7 +44,7 @@ export default function DashboardHome() {
   }
 
   // Role-based dashboard rendering
-  if (userRole === 'fabricante' || userRole === 'admin') {
+  if (userRole === 'fabricante' || userRole === 'admin' || userRole === 'super_admin') {
     return <FabricanteDashboard userName={userName} />;
   }
 

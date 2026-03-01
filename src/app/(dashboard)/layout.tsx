@@ -11,6 +11,7 @@ import {
   LayoutTemplate, Settings
 } from 'lucide-react';
 import type { Profile } from '@/types/database';
+import { isAdminRole, isFabricanteRole } from '@/lib/role-helpers';
 import NotificationBell from '@/components/notifications/NotificationBell';
 
 type NavItem = {
@@ -74,11 +75,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Selecionar navegação por role
   const getNavItems = (): NavItem[] => {
     if (!profile) return lojistaNav;
-    switch (profile.role) {
-      case 'fabricante': return fabricanteNav;
-      case 'admin': return adminNav;
-      default: return lojistaNav;
-    }
+    if (isAdminRole(profile)) return adminNav;
+    if (profile.role === 'fabricante') return fabricanteNav;
+    return lojistaNav;
   };
 
   const navItems = getNavItems();
@@ -126,16 +125,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div className="flex items-center gap-1.5 mt-0.5">
                   {profile.role === 'fabricante' ? (
                     <Factory size={10} className="text-blue-400" />
-                  ) : profile.role === 'admin' ? (
+                  ) : isAdminRole(profile) ? (
                     <Shield size={10} className="text-purple-400" />
                   ) : (
                     <Store size={10} className="text-brand-400" />
                   )}
                   <span className={`text-[9px] font-800 uppercase tracking-widest ${
                     profile.role === 'fabricante' ? 'text-blue-400' : 
-                    profile.role === 'admin' ? 'text-purple-400' : 'text-brand-400'
+                    isAdminRole(profile) ? 'text-purple-400' : 'text-brand-400'
                   }`}>
-                    {profile.role}
+                    {isAdminRole(profile) ? 'SUPER ADMIN' : profile.role}
                   </span>
                 </div>
               </div>
@@ -150,7 +149,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {profile && (
             <div className="px-4 pb-3">
               <span className="text-[10px] font-800 uppercase tracking-widest text-dark-600">
-                {profile.role === 'fabricante' ? 'Painel Fabricante' : profile.role === 'admin' ? 'Painel Admin' : 'Painel Lojista'}
+                {profile.role === 'fabricante' ? 'Painel Fabricante' : isAdminRole(profile) ? 'Painel Admin' : 'Painel Lojista'}
               </span>
             </div>
           )}
@@ -170,7 +169,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
 
-          {profile?.role === 'admin' && (
+          {profile && isAdminRole(profile) && (
             <>
               <div className="h-px bg-dark-800/40 my-4 mx-2" />
               <div className="px-4 pb-3">

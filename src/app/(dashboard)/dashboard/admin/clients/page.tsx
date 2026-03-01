@@ -45,9 +45,11 @@ export default function AdminClientsPage() {
   };
 
   const handleToggleRole = async (userId: string, currentRole: string) => {
-    const newRole = currentRole === 'admin' ? 'user' : 'admin';
+    const newRole = currentRole === 'admin' || currentRole === 'super_admin' ? 'lojista' : 'admin';
     if (!confirm(`Mudar para ${newRole}?`)) return;
-    await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
+    const updates: Record<string, unknown> = { role: newRole };
+    if (newRole === 'lojista') updates.is_super_admin = false;
+    await supabase.from('profiles').update(updates).eq('id', userId);
     fetchClients(page);
   };
 
@@ -88,7 +90,7 @@ export default function AdminClientsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <button onClick={() => handleToggleRole(c.id, c.role)}
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-500 ${c.role === 'admin' ? 'bg-amber-500/15 text-amber-400' : 'bg-dark-700 text-dark-400'}`}>
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-500 ${c.role === 'admin' || c.role === 'super_admin' ? 'bg-amber-500/15 text-amber-400' : c.role === 'fabricante' ? 'bg-blue-500/15 text-blue-400' : 'bg-dark-700 text-dark-400'}`}>
                         {c.role}
                       </button>
                     </td>

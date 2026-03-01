@@ -35,15 +35,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // Proteger rotas admin: só role='admin' acessa
+  // Proteger rotas admin: só role='admin' ou 'super_admin' acessa
   if (user && path.startsWith('/dashboard/admin')) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, is_super_admin')
       .eq('id', user.id)
       .single();
 
-    if (profile?.role !== 'admin') {
+    const hasAdminAccess = profile?.role === 'admin' || profile?.role === 'super_admin' || profile?.is_super_admin === true;
+    if (!hasAdminAccess) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }
