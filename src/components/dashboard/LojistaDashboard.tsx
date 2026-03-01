@@ -175,7 +175,13 @@ export default function LojistaDashboard({ userName }: { userName: string }) {
 
     async function run() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session || cancelled) return;
+      if (cancelled) return;
+      if (!session) {
+        // Sessão expirada — exibir erro amigável e parar o loading
+        setError('Sessão expirada. Faça login novamente.');
+        setLoading(false);
+        return;
+      }
       await fetchData();
     }
 
