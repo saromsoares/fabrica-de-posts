@@ -1,16 +1,17 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { useRouter } from 'next/navigation';
 import {
-  Factory, Store, Upload, Check, ArrowRight, ArrowLeft,
+  Factory, Store, Check, ArrowRight, ArrowLeft,
   Loader2, Globe, Phone, FileText, Sparkles,
   CheckCircle2, Clock, AlertCircle, Target, Users,
   Megaphone, Eye, Palette, MapPin, Instagram,
   MessageSquare, Building2, ShoppingBag, Wrench,
-  Package, LayoutGrid, X,
+  Package, LayoutGrid,
 } from 'lucide-react';
+import { FileUpload } from '@/components/ui/FileUpload';
 import type { Profile, Factory as FactoryType, Sector } from '@/types/database';
 
 // ─── helpers ──────────────────────────────────────────────────
@@ -165,55 +166,6 @@ function StepIndicator({ current, total, labels }: { current: number; total: num
   );
 }
 
-// ─── upload button ────────────────────────────────────────────
-
-function UploadButton({
-  label, hint, preview, onFile, loading: uploading,
-}: {
-  label: string;
-  hint: string;
-  preview: string | null;
-  onFile: (f: File) => void;
-  loading: boolean;
-}) {
-  return (
-    <div>
-      <label className="block text-xs font-700 text-dark-400 uppercase tracking-wider mb-2">
-        <Upload size={12} className="inline mr-1" />{label}
-      </label>
-      <label className="cursor-pointer block">
-        <input
-          type="file"
-          accept="image/png"
-          className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
-        />
-        {preview ? (
-          <div className="w-24 h-24 bg-white rounded-2xl flex items-center justify-center p-2 border border-dark-800/30 relative">
-            <img src={preview} alt="Preview" className="max-w-full max-h-full object-contain" />
-            {uploading && (
-              <div className="absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center">
-                <Loader2 size={16} className="animate-spin text-white" />
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="w-full h-24 border-2 border-dashed border-dark-700 rounded-2xl flex flex-col items-center justify-center gap-2 hover:border-brand-500/50 transition-all">
-            {uploading ? (
-              <Loader2 size={20} className="animate-spin text-brand-400" />
-            ) : (
-              <>
-                <Upload size={20} className="text-dark-500" />
-                <span className="text-xs text-dark-500">{hint}</span>
-              </>
-            )}
-          </div>
-        )}
-      </label>
-    </div>
-  );
-}
-
 // ═══════════════════════════════════════════════════════════════
 //  FABRICANTE WIZARD (4 steps)
 // ═══════════════════════════════════════════════════════════════
@@ -244,7 +196,6 @@ function FabricanteWizard({
 }) {
   const [step, setStep] = useState(0);
   const [sectors, setSectors] = useState<Sector[]>([]);
-  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -263,27 +214,6 @@ function FabricanteWizard({
       if (s) setSectors(s as Sector[]);
     });
   }, [supabase]);
-
-  const handleLogoUpload = async (file: File) => {
-    setUploading(true);
-    setError(null);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setError('Sessão expirada.'); return; }
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('type', 'logo');
-      const { data: res, error: fnErr } = await supabase.functions.invoke('validate-upload', { body: formData });
-      if (fnErr) throw fnErr;
-      if (res?.url) set('logoUrl', res.url);
-      else throw new Error(res?.error || 'Erro no upload. Use PNG quadrado, mínimo 500x500px.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro no upload.');
-    } finally {
-      setUploading(false);
-    }
-  };
 
   const handleSubmit = async () => {
     setSaving(true);
@@ -353,12 +283,11 @@ function FabricanteWizard({
             />
           </div>
 
-          <UploadButton
-            label="Logo (PNG quadrado, mín. 500x500)"
-            hint="Clique para enviar PNG 1:1"
-            preview={data.logoUrl}
-            onFile={handleLogoUpload}
-            loading={uploading}
+          <FileUpload
+            type="logo"
+            currentUrl={data.logoUrl || null}
+            onUploadComplete={(url) => set('logoUrl', url)}
+            onError={(msg) => setError(msg)}
           />
 
           <div>
@@ -671,27 +600,6 @@ function LojistaWizard({
     return () => { cancelled = true; };
   }, [supabase, userId]);
 
-  const handleLogoUpload = async (file: File) => {
-    setUploading(true);
-    setError(null);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setError('Sessão expirada.'); return; }
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('type', 'brand-logo');
-      const { data: res, error: fnErr } = await supabase.functions.invoke('validate-upload', { body: formData });
-      if (fnErr) throw fnErr;
-      if (res?.url) set('logoUrl', res.url);
-      else throw new Error(res?.error || 'Erro no upload. Use PNG quadrado, mínimo 500x500px.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro no upload.');
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const handleFollow = async (factoryId: string) => {
     setActionLoading(factoryId);
     setError(null);
@@ -853,12 +761,11 @@ function LojistaWizard({
             Brand Kit
           </h2>
 
-          <UploadButton
-            label="Logo da Loja (PNG quadrado, mín. 500x500)"
-            hint="Clique para enviar PNG 1:1"
-            preview={data.logoUrl}
-            onFile={handleLogoUpload}
-            loading={uploading}
+          <FileUpload
+            type="logo"
+            currentUrl={data.logoUrl || null}
+            onUploadComplete={(url) => set('logoUrl', url)}
+            onError={(msg) => setError(msg)}
           />
 
           <div className="grid grid-cols-2 gap-4">

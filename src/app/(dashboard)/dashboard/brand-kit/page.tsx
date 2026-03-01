@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
-import { uploadImage } from '@/lib/upload';
-import { validateLogo } from '@/lib/validators/image-validator';
+import { FileUpload } from '@/components/ui/FileUpload';
 import { useRouter } from 'next/navigation';
-import { Upload, Check, Palette } from 'lucide-react';
+import { Check, Palette } from 'lucide-react';
 import type { BrandKit } from '@/types/database';
 
 export default function BrandKitPage() {
@@ -13,8 +12,7 @@ export default function BrandKitPage() {
     primary_color: '#000000', secondary_color: '#FFFFFF',
     store_name: '', instagram_handle: '', whatsapp: '',
   });
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoUploadedUrl, setLogoUploadedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -36,7 +34,7 @@ export default function BrandKitPage() {
         if (data) {
           setBrandKit(data);
           setIsNew(false);
-          if (data.logo_url) setLogoPreview(data.logo_url);
+          if (data.logo_url) setLogoUploadedUrl(data.logo_url);
         }
         setLoading(false);
       }
@@ -45,18 +43,7 @@ export default function BrandKitPage() {
   }, [supabase]);
 
   const [logoError, setLogoError] = useState<string | null>(null);
-
-  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) { setLogoError('Logo muito grande. Máximo: 2MB.'); return; }
-      const validation = await validateLogo(file);
-      if (!validation.valid) { setLogoError(validation.error!); return; }
-      setLogoError(null);
-      setLogoFile(file);
-      setLogoPreview(URL.createObjectURL(file));
-    }
-  };
+  // handleLogoChange removido — substituído por FileUpload component
 
   const handleSave = async () => {
     setSaving(true);
@@ -64,19 +51,7 @@ export default function BrandKitPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      let logoUrl = brandKit.logo_url;
-
-      // Upload logo se mudou
-      if (logoFile) {
-        const ext = logoFile.name.split('.').pop() || 'png';
-        const filename = `${user.id}/logo.${ext}`;
-        try {
-          const result = await uploadImage(logoFile, 'fabrica/brand-kits', filename, { contentType: logoFile.type, upsert: true });
-          logoUrl = result.url;
-        } catch (err) {
-          console.error('Erro no upload da logo:', err);
-        }
-      }
+      const logoUrl = logoUploadedUrl || brandKit.logo_url;
 
       const payload = {
         user_id: user.id,
@@ -130,23 +105,13 @@ export default function BrandKitPage() {
         {/* Logo */}
         <div>
           <label className="block text-sm font-500 text-dark-300 mb-3">Logo da loja</label>
-          <div className="flex items-center gap-5">
-            <div className="w-20 h-20 rounded-2xl bg-white border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
-              {logoPreview ? (
-                <img src={logoPreview} alt="Logo" className="w-full h-full object-contain p-1" />
-              ) : (
-                <Upload size={24} className="text-dark-500" />
-              )}
-            </div>
-            <div>
-              <label className="inline-block px-4 py-2 bg-dark-800 hover:bg-dark-700 text-sm text-dark-200 rounded-xl cursor-pointer transition-all">
-                {logoPreview ? 'Trocar logo' : 'Subir logo'}
-                <input type="file" accept="image/png" className="hidden" onChange={handleLogoChange} />
-              </label>
-              <p className="text-xs text-dark-500 mt-2">PNG, quadrado, mínimo 500x500px. Máx 2MB.</p>
-              {logoError && <p className="text-xs text-red-400 mt-1">{logoError}</p>}
-            </div>
-          </div>
+          <FileUpload
+            type="logo"
+            currentUrl={logoUploadedUrl}
+            onUploadComplete={(url) => { setLogoUploadedUrl(url); setLogoError(null); }}
+            onError={(msg) => setLogoError(msg)}
+          />
+          {logoError && <p className="text-xs text-red-400 mt-1">{logoError}</p>}
         </div>
 
         {/* Cores */}

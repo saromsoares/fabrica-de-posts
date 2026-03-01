@@ -3,13 +3,12 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
-import { uploadImage } from '@/lib/upload';
-import { validateProductImage } from '@/lib/validators/image-validator';
 import { isFabricanteRole } from '@/lib/role-helpers';
 import { extractError } from '@/lib/utils';
 import ProductCard from '@/components/product/ProductCard';
+import { FileUpload } from '@/components/ui/FileUpload';
 import {
-  Loader2, Plus, Pencil, Trash2, X, Upload, Package,
+  Loader2, Plus, Pencil, Trash2, X, Package,
   AlertCircle, CheckCircle, Search, Filter, Eye, EyeOff,
   FolderOpen, Sparkles,
 } from 'lucide-react';
@@ -66,8 +65,7 @@ export default function FabricanteProdutosPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageUploadedUrl, setImageUploadedUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Feedback
@@ -167,34 +165,14 @@ export default function FabricanteProdutosPage() {
     return result;
   }, [products, filterCategory, searchQuery]);
 
-  /* ─── Image handling (via validate-upload Edge Function) ─── */
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Quick client-side pre-check
-    if (!file.type.includes('png')) {
-      setError('A imagem precisa ser PNG quadrada, mínimo 1080x1080px.');
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Imagem muito grande. Máximo 10MB.');
-      return;
-    }
-
-    // Show local preview immediately
-    setImagePreview(URL.createObjectURL(file));
-    setImageFile(file);
-    setError(null);
-  };
+  // handleImageChange removido — substituído por FileUpload component
 
   /* ─── Form handlers ─── */
   const handleOpenNew = () => {
     clearMessages();
     setEditingId(null);
     setForm(emptyForm);
-    setImageFile(null);
-    setImagePreview(null);
+    setImageUploadedUrl(null);
     setShowForm(true);
   };
 
@@ -210,8 +188,7 @@ export default function FabricanteProdutosPage() {
       technical_specs: p.technical_specs || '',
       active: p.active !== false,
     });
-    setImagePreview(p.image_url || null);
-    setImageFile(null);
+    setImageUploadedUrl(p.image_url || null);
     setShowForm(true);
   };
 
@@ -219,8 +196,7 @@ export default function FabricanteProdutosPage() {
     setShowForm(false);
     setEditingId(null);
     setForm(emptyForm);
-    setImageFile(null);
-    setImagePreview(null);
+    setImageUploadedUrl(null);
     clearMessages();
   };
 
@@ -231,21 +207,7 @@ export default function FabricanteProdutosPage() {
     setSaving(true);
 
     try {
-      let imageUrl: string | undefined;
-      if (imageFile) {
-        // SESSION GUARD
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) { setError('Sessão expirada. Faça login novamente.'); setSaving(false); return; }
-
-        // Upload via validate-upload Edge Function
-        const formData = new FormData();
-        formData.append('file', imageFile);
-        formData.append('type', 'product');
-        const { data: uploadRes, error: uploadErr } = await supabase.functions.invoke('validate-upload', { body: formData });
-        if (uploadErr) throw new Error(uploadErr.message);
-        if (!uploadRes?.url) throw new Error(uploadRes?.error || 'A imagem precisa ser PNG quadrada, mínimo 1080x1080px.');
-        imageUrl = uploadRes.url;
-      }
+      const imageUrl = imageUploadedUrl || undefined;
 
       const payload = {
         name: form.name.trim(),
@@ -458,20 +420,12 @@ export default function FabricanteProdutosPage() {
               {/* Imagem */}
               <div>
                 <label className="block text-sm font-500 text-dark-300 mb-1.5">Imagem do Produto</label>
-                <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 rounded-xl bg-white border-2 border-dashed border-dark-600 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {imagePreview
-                      ? <img src={imagePreview} alt="" className="w-full h-full object-contain p-1" />
-                      : <Package size={24} className="text-gray-300" />}
-                  </div>
-                  <div>
-                    <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-dark-800 hover:bg-dark-700 rounded-xl cursor-pointer text-sm text-dark-300 transition-all">
-                      <Upload size={16} /> {imageFile ? 'Trocar imagem' : 'Subir imagem'}
-                      <input type="file" accept="image/png" className="hidden" onChange={handleImageChange} />
-                    </label>
-                    <p className="text-[11px] text-dark-500 mt-1.5">PNG, quadrado, mínimo 1080x1080px. Máx 5MB.</p>
-                  </div>
-                </div>
+                <FileUpload
+                  type="product"
+                  currentUrl={imageUploadedUrl}
+                  onUploadComplete={(url) => setImageUploadedUrl(url)}
+                  onError={(msg) => setError(msg)}
+                />
               </div>
 
               {/* Categoria */}

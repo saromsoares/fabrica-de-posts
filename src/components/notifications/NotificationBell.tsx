@@ -100,6 +100,7 @@ export default function NotificationBell() {
   // Fetch full list when panel opens
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchNotifications();
     }
   }, [open, fetchNotifications]);

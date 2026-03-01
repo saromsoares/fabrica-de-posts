@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
-import { uploadImage } from '@/lib/upload';
-import { validateProductImage } from '@/lib/validators/image-validator';
-import { Plus, Pencil, Trash2, X, Upload, AlertCircle, CheckCircle, Package } from 'lucide-react';
+import { FileUpload } from '@/components/ui/FileUpload';
+import { Plus, Pencil, Trash2, X, AlertCircle, CheckCircle, Package } from 'lucide-react';
 import { extractError } from '@/lib/utils';
 import type { Product, Category, Factory } from '@/types/database';
 
@@ -32,8 +31,7 @@ export default function AdminProdutosPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageUploadedUrl, setImageUploadedUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -114,16 +112,7 @@ export default function AdminProdutosPage() {
     setTimeout(() => setSuccess(null), 3500);
   };
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { setError('Imagem muito grande. Máx 5MB.'); return; }
-    const validation = await validateProductImage(file);
-    if (!validation.valid) { setError(validation.error!); return; }
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-    clearMessages();
-  };
+  // handleImageChange removido — substituído por FileUpload component
 
   const handleEdit = (p: Product) => {
     clearMessages();
@@ -138,8 +127,7 @@ export default function AdminProdutosPage() {
       tags: (p.tags || []).join(', '),
       active: !!p.active,
     });
-    setImagePreview(p.image_url || null);
-    setImageFile(null);
+    setImageUploadedUrl(p.image_url || null);
     setShowForm(true);
   };
 
@@ -149,8 +137,7 @@ export default function AdminProdutosPage() {
     // Auto-selecionar se só tem 1 fábrica
     const autoFactory = factories.length === 1 ? factories[0].id : '';
     setForm({ ...emptyForm, factory_id: autoFactory });
-    setImageFile(null);
-    setImagePreview(null);
+    setImageUploadedUrl(null);
     setShowForm(true);
   };
 
@@ -158,8 +145,7 @@ export default function AdminProdutosPage() {
     setShowForm(false);
     setEditingId(null);
     setForm(emptyForm);
-    setImageFile(null);
-    setImagePreview(null);
+    setImageUploadedUrl(null);
     clearMessages();
   };
 
@@ -170,14 +156,7 @@ export default function AdminProdutosPage() {
     setSaving(true);
 
     try {
-      let imageUrl: string | undefined;
-      if (imageFile) {
-        const ext = imageFile.name.split('.').pop()?.toLowerCase() || 'png';
-        const safeName = form.name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
-        const filename = `${Date.now()}-${safeName}.${ext}`;
-        const result = await uploadImage(imageFile, 'fabrica/products', filename, { contentType: imageFile.type });
-        imageUrl = result.url;
-      }
+      const imageUrl = imageUploadedUrl || undefined;
 
       const payload = {
         name: form.name.trim(),
@@ -321,20 +300,12 @@ export default function AdminProdutosPage() {
               {/* Imagem */}
               <div>
                 <label className="block text-sm font-500 text-dark-300 mb-1.5">Imagem do Produto</label>
-                <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 rounded-xl bg-white border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {imagePreview
-                      ? <img src={imagePreview} alt="" className="w-full h-full object-cover" />
-                      : <Package size={24} className="text-dark-500" />}
-                  </div>
-                  <div>
-                    <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-dark-800 hover:bg-dark-700 rounded-xl cursor-pointer text-sm text-dark-300 transition-all">
-                      <Upload size={16} /> {imageFile ? 'Trocar imagem' : 'Subir imagem'}
-                      <input type="file" accept="image/png" className="hidden" onChange={handleImageChange} />
-                    </label>
-                    <p className="text-[11px] text-dark-500 mt-1.5">PNG, quadrado, mínimo 1080x1080px. Máx 5MB.</p>
-                  </div>
-                </div>
+                <FileUpload
+                  type="product"
+                  currentUrl={imageUploadedUrl}
+                  onUploadComplete={(url) => setImageUploadedUrl(url)}
+                  onError={(msg) => setError(msg)}
+                />
               </div>
 
               {/* Categoria */}

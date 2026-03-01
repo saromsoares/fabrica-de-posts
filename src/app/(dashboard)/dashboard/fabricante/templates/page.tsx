@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { Loader2, Plus, Pencil, Trash2, LayoutTemplate, X, Check, Upload, Image as ImageIcon, Eye } from 'lucide-react';
-import { validateTemplate } from '@/lib/validators/image-validator';
+import { validateFile } from '@/lib/upload-validator';
 import type { Template, Factory } from '@/types/database';
 
 export default function FabricanteTemplatesPage() {
@@ -83,20 +83,16 @@ export default function FabricanteTemplatesPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 15 * 1024 * 1024) {
-      setError('Arquivo muito grande. Máximo 15MB.');
-      return;
-    }
-
-    const validation = await validateTemplate(file);
+    // Validação unificada via upload-validator (async)
+    const validation = await validateFile(file, 'template');
     if (!validation.valid) {
       setError(validation.error!);
       return;
     }
 
-    // Auto-detectar formato pelo tamanho da imagem
-    if (validation.format) {
-      setFormFormat(validation.format);
+    // Auto-detectar formato pelo metadata retornado pelo validador
+    if (validation.metadata?.format) {
+      setFormFormat(validation.metadata.format);
     }
 
     setFormImageFile(file);
