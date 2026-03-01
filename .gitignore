@@ -9,3 +9,23 @@ npm-debug.log*
 .vercel
 *.tsbuildinfo
 next-env.d.ts
+
+# === Backup files ===
+*.bak
+*.bak-*
+*.backup
+*.orig
+*.old
+*~
+
+# === Editor swap/temp files ===
+*.swp
+*.swo
+*.tmp
+.idea/
+.vscode/
+*.sublime-*
+
+# === OS files ===
+Thumbs.db
+Desktop.ini
