@@ -10,6 +10,9 @@
  */
 
 import { createClient } from '@/lib/supabase-browser';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('PlanLimits');
 
 export interface PlanLimits {
   plan_name: string;
@@ -43,7 +46,7 @@ export async function getAllPlanLimits(): Promise<PlanLimits[]> {
       .order('monthly_generations');
 
     if (error || !data || data.length === 0) {
-      console.warn('[plan-limits] Failed to fetch from DB, using fallback:', error?.message);
+      log.warn('Failed to fetch from DB, using fallback', { error: error?.message });
       return getFallbackLimits();
     }
 
@@ -51,7 +54,7 @@ export async function getAllPlanLimits(): Promise<PlanLimits[]> {
     _cachedAt = now;
     return _cachedLimits;
   } catch (err) {
-    console.warn('[plan-limits] Unexpected error, using fallback:', err);
+    log.warn('Unexpected error, using fallback', { error: err instanceof Error ? err.message : String(err) });
     return getFallbackLimits();
   }
 }

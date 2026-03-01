@@ -8,6 +8,9 @@ import Link from 'next/link';
 import { Loader2, ArrowLeft, Factory as FactoryIcon, CheckCircle, Clock, UserPlus, UserMinus, Search } from 'lucide-react';
 import LogoAvatar from '@/components/ui/LogoAvatar';
 import type { Sector, Factory, FactoryFollower } from '@/types/database';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('Setores');
 
 type FactoryWithStatus = Factory & {
   follow_status: FactoryFollower['status'] | null;
@@ -85,7 +88,7 @@ export default function SectorFactoriesPage() {
       });
       await loadData();
     } catch (err) {
-      console.error('Erro ao seguir:', err);
+      log.error('Follow action failed', { error: err instanceof Error ? err.message : String(err) });
     }
     setActionLoading(null);
   };
@@ -98,7 +101,7 @@ export default function SectorFactoriesPage() {
       });
       await loadData();
     } catch (err) {
-      console.error('Erro ao deixar de seguir:', err);
+      log.error('Unfollow action failed', { error: err instanceof Error ? err.message : String(err) });
     }
     setActionLoading(null);
   };

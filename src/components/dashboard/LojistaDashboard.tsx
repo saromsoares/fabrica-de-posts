@@ -3,11 +3,15 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
+import { createLogger } from '@/lib/logger';
+import { handleApiError } from '@/lib/api-errors';
 import {
   Store, Image as ImageIcon, Factory, Clock, Sparkles,
   ArrowRight, AlertCircle, Zap, Package,
   TrendingUp, Crown, RefreshCw,
 } from 'lucide-react';
+
+const log = createLogger('LojistaDashboard');
 
 /* ═══════════════════════════════════════
    TYPES — contrato idêntico ao lojista-stats v4
@@ -139,15 +143,25 @@ export default function LojistaDashboard({ userName }: { userName: string }) {
         return;
       }
 
-      const { data, error: fnError } = await supabase.functions.invoke('lojista-stats');
+      const result = await supabase.functions.invoke('lojista-stats');
+      const apiErr = handleApiError('lojista-stats', result);
+      if (apiErr.code !== 'OK') {
+        log.error('fetchData failed', { code: apiErr.code, rid: apiErr.requestId });
+        setError(apiErr.message || 'Erro ao carregar dados. Tente novamente.');
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
 
-      if (fnError) throw fnError;
+      const data = result.data;
       if (!data) throw new Error('Resposta vazia da Edge Function');
 
+      log.info('Dashboard data loaded', { plan: (data as LojistaDashboardData).profile?.plan });
       setDashboard(data as LojistaDashboardData);
       lastFetchRef.current = Date.now();
     } catch (err) {
-      console.error('[LojistaDashboard] fetchData error:', err);
+      const message = err instanceof Error ? err.message : String(err);
+      log.error('fetchData exception', { error: message });
       setError('Erro ao carregar dados. Tente novamente.');
     }
 

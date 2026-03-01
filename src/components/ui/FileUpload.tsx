@@ -10,6 +10,10 @@ import {
   type ValidationResult,
 } from '@/lib/upload-validator';
 import { createClient } from '@/lib/supabase-browser';
+import { createLogger } from '@/lib/logger';
+import { handleApiError } from '@/lib/api-errors';
+
+const log = createLogger('FileUpload');
 
 // ============================================================
 // FileUpload — Componente reutilizável de upload
@@ -103,8 +107,11 @@ export function FileUpload({
         }
       );
 
-      if (fnError || !data?.success) {
-        const msg = data?.error ?? fnError?.message ?? 'Erro no upload. Tente novamente.';
+      // Usar handleApiError para tratar tanto formato novo quanto legado
+      const apiErr = handleApiError('validate-upload', { data, error: fnError });
+      if (apiErr.code !== 'OK') {
+        const msg = apiErr.message || 'Erro no upload. Tente novamente.';
+        log.warn('Upload failed', { type, code: apiErr.code, rid: apiErr.requestId });
         setError(msg);
         onError?.(msg);
         setPreview(currentUrl ?? null);
@@ -119,7 +126,7 @@ export function FileUpload({
       setError(msg);
       onError?.(msg);
       setPreview(currentUrl ?? null);
-      console.error('[FileUpload] Unexpected error:', err);
+      log.error('Unexpected upload error', { error: err instanceof Error ? err.message : String(err) });
     } finally {
       setUploading(false);
       // Limpar ObjectURL para evitar memory leak

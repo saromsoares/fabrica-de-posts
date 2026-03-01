@@ -14,6 +14,10 @@ import { extractDominantColor } from '@/lib/image-processing';
 // uploadImage removido — upload direto ao Supabase Storage
 import { getFontById, loadFont } from '@/lib/fonts';
 import AIGenerationMode from '@/components/studio/AIGenerationMode';
+import { createLogger } from '@/lib/logger';
+import { handleApiError } from '@/lib/api-errors';
+
+const log = createLogger('Estudio');
 
 /* ═══════════════════════════════════════════════════════
    10 TEMPLATES VISUAIS PRÉ-PROGRAMADOS
@@ -639,7 +643,7 @@ export default function EstudioPage() {
           imageUrl = publicData.publicUrl;
         }
       } catch (err) {
-        console.error('Upload fallback para dataUrl:', err);
+        log.warn('Storage upload failed, using dataUrl fallback', { error: err instanceof Error ? err.message : String(err) });
       }
       setGeneratedImageUrl(imageUrl);
 
@@ -661,7 +665,7 @@ export default function EstudioPage() {
       if (usageResult) setUsage({ ...usageResult, count: usageResult.count, remaining: usageResult.limit - usageResult.count } as UsageInfo);
       setStep(3);
     } catch (err) {
-      console.error('Erro ao gerar:', err);
+      log.error('Generation failed', { error: err instanceof Error ? err.message : String(err) });
     } finally {
       setGenerating(false);
     }

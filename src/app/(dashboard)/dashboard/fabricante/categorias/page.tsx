@@ -9,6 +9,9 @@ import {
   Package, AlertCircle, CheckCircle, AlertTriangle, SmilePlus,
 } from 'lucide-react';
 import type { Category, Factory, Profile } from '@/types/database';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('FabricanteCategorias');
 
 type CategoryWithCount = Category & { product_count: number };
 
@@ -96,7 +99,7 @@ export default function FabricanteCategoriesPage() {
 
       setCategories(enriched);
     } catch (err) {
-      console.error('loadData error:', err);
+      log.error('loadData failed', { error: err instanceof Error ? err.message : String(err) });
       setError('Erro ao carregar dados.');
     }
     setLoading(false);

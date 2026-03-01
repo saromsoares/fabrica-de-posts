@@ -21,6 +21,7 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { createLogger } from '@/lib/logger';
 import {
   isStaticAsset,
   isPublicRoute,
@@ -34,6 +35,8 @@ import {
   getOnboardingUrl,
   type AuthContext,
 } from '@/lib/route-rules';
+
+const log = createLogger('Middleware');
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -97,7 +100,7 @@ export async function middleware(request: NextRequest) {
   if (rpcError || !authContext) {
     // RPC falhou (profile não existe ou banco inacessível)
     // Redirecionar para login como fallback seguro
-    console.error('[middleware] get_auth_context failed:', rpcError?.message);
+    log.error('get_auth_context failed', { error: rpcError?.message, userId: session.user.id });
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
