@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
+import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import FabricanteDashboard from '@/components/dashboard/FabricanteDashboard';
 import LojistaDashboard from '@/components/dashboard/LojistaDashboard';
@@ -11,6 +12,7 @@ type UserRole = 'lojista' | 'fabricante' | 'admin' | 'super_admin';
 
 export default function DashboardHome() {
   const supabase = createClient();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('');
   const [userRole, setUserRole] = useState<UserRole>('lojista');
@@ -49,12 +51,23 @@ export default function DashboardHome() {
   }
 
   // Role-based dashboard rendering
-  // Se o admin está em modo de teste, usar o testRole
-  const effectiveRole = (userRole === 'admin' || userRole === 'super_admin') && testRole
-    ? testRole
-    : userRole;
+  const isAdmin = userRole === 'admin' || userRole === 'super_admin';
 
-  if (effectiveRole === 'fabricante' || (effectiveRole !== 'lojista' && (userRole === 'admin' || userRole === 'super_admin') && !testRole)) {
+  // Admin sem modo de teste → redirecionar para o painel admin
+  // O painel admin é a home natural do super_admin/admin
+  if (isAdmin && !testRole) {
+    router.replace('/dashboard/admin');
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-6 h-6 animate-spin text-brand-400" />
+      </div>
+    );
+  }
+
+  // Admin em modo de teste → usar o testRole escolhido
+  const effectiveRole = isAdmin && testRole ? testRole : userRole;
+
+  if (effectiveRole === 'fabricante') {
     return <FabricanteDashboard userName={userName} />;
   }
 
