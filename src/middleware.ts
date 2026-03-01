@@ -1,7 +1,54 @@
+/**
+ * middleware.ts
+ * Middleware de autenticação e autorização do Next.js.
+ *
+ * Arquitetura:
+ * - Regras de rota: src/lib/route-rules.ts (helpers puros, testáveis)
+ * - Auth: getSession() (cookie local, sem round-trip) + RPC get_auth_context (1.5ms)
+ * - Máximo 2 chamadas de rede por request (getSession + RPC)
+ *
+ * Fluxo de decisão:
+ * 1. Asset estático/API → skip
+ * 2. Rota pública → pass-through
+ * 3. Sem sessão → redirect /login?redirect={pathname}
+ * 4. Autenticado em /login ou /signup → redirect /dashboard
+ * 5. Buscar contexto via RPC get_auth_context (1 query, ~1.5ms)
+ * 6. Onboarding pendente + rota protegida → redirect /onboarding
+ * 7. Rota admin sem permissão → redirect /dashboard
+ * 8. Rota fabricante sem permissão → redirect /dashboard
+ * 9. Pass-through
+ */
+
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import {
+  isStaticAsset,
+  isPublicRoute,
+  isAdminRoute,
+  isFabricanteRoute,
+  isOnboardingRoute,
+  requiresOnboarding,
+  shouldRedirectIfAuthenticated,
+  canAccessAdmin,
+  canAccessFabricante,
+  getOnboardingUrl,
+  type AuthContext,
+} from '@/lib/route-rules';
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // ── 1. Skip: assets estáticos e API routes ──────────────────
+  if (isStaticAsset(pathname)) {
+    return NextResponse.next({ request });
+  }
+
+  // ── 2. Rotas públicas: pass-through sem auth ─────────────────
+  if (isPublicRoute(pathname)) {
+    return NextResponse.next({ request });
+  }
+
+  // ── Criar cliente Supabase com cookie forwarding ─────────────
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -9,77 +56,92 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() { return request.cookies.getAll(); },
+        getAll() {
+          return request.cookies.getAll();
+        },
         setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options));
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
         },
       },
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const path = request.nextUrl.pathname;
+  // ── 3. Verificar sessão (lê do cookie — sem round-trip ao Supabase) ──
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  // Rotas públicas
-  const isPublic = path === '/' || path.startsWith('/login') || path.startsWith('/auth/callback');
-
-  // Não autenticado + rota protegida → login
-  if (!user && !isPublic) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  if (!session) {
+    // Sem sessão → redirecionar para login preservando o destino
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // Autenticado na landing/login → dashboard
-  if (user && (path === '/' || path.startsWith('/login'))) {
+  // ── 4. Autenticado tentando acessar /login ou /signup ────────
+  if (shouldRedirectIfAuthenticated(pathname)) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // Proteger rotas admin: só role='admin' ou 'super_admin' acessa
-  if (user && path.startsWith('/dashboard/admin')) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role, is_super_admin')
-      .eq('id', user.id)
-      .single();
+  // ── 5. Buscar contexto de auth via RPC (1 única query ao banco) ──
+  // A RPC get_auth_context usa SECURITY DEFINER — sem RLS, sem recursão, ~1.5ms
+  const { data: authContext, error: rpcError } = await supabase
+    .rpc('get_auth_context', { p_user_id: session.user.id })
+    .single();
 
-    const hasAdminAccess = profile?.role === 'admin' || profile?.role === 'super_admin' || profile?.is_super_admin === true;
-    if (!hasAdminAccess) {
+  if (rpcError || !authContext) {
+    // RPC falhou (profile não existe ou banco inacessível)
+    // Redirecionar para login como fallback seguro
+    console.error('[middleware] get_auth_context failed:', rpcError?.message);
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  const ctx = authContext as AuthContext;
+
+  // ── 6. Onboarding pendente ───────────────────────────────────
+  // super_admin bypassa o check de onboarding
+  if (!ctx.onboarding_complete && !ctx.is_super_admin) {
+    // Já está no onboarding → deixar passar
+    if (isOnboardingRoute(pathname)) {
+      return supabaseResponse;
+    }
+    // Tenta acessar rota que exige onboarding → redirecionar
+    if (requiresOnboarding(pathname)) {
+      const onboardingUrl = getOnboardingUrl(ctx);
+      return NextResponse.redirect(new URL(onboardingUrl, request.url));
+    }
+  }
+
+  // ── 7. Rotas admin ───────────────────────────────────────────
+  if (isAdminRoute(pathname)) {
+    if (!canAccessAdmin(ctx)) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
+    return supabaseResponse;
   }
 
-  // Proteger rotas fabricante: só role='fabricante', 'admin' ou 'super_admin' acessa
-  if (user && path.startsWith('/dashboard/fabricante')) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role, is_super_admin')
-      .eq('id', user.id)
-      .single();
-
-    const hasFabricanteAccess = profile?.role === 'fabricante' || profile?.role === 'admin' || profile?.role === 'super_admin' || profile?.is_super_admin === true;
-    if (!hasFabricanteAccess) {
+  // ── 8. Rotas fabricante ──────────────────────────────────────
+  if (isFabricanteRoute(pathname)) {
+    if (!canAccessFabricante(ctx)) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
+    return supabaseResponse;
   }
 
-  // Onboarding: redirecionar para /onboarding se não completou
-  // Permitir acesso a: /onboarding, /dashboard/brand-kit, /dashboard/admin, /dashboard/conta
-  if (user && path.startsWith('/dashboard') && !path.startsWith('/dashboard/brand-kit') && !path.startsWith('/dashboard/admin') && !path.startsWith('/dashboard/conta')) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('onboarding_complete')
-      .eq('id', user.id)
-      .single();
-
-    if (profile && !profile.onboarding_complete) {
-      return NextResponse.redirect(new URL('/onboarding', request.url));
-    }
-  }
-
+  // ── 9. Rota autenticada genérica: pass-through ───────────────
   return supabaseResponse;
 }
 
+// ============================================================
+// MATCHER — quais rotas passam pelo middleware
+// Exclui: _next/static, _next/image, favicon.ico, arquivos estáticos
+// ============================================================
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|api|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 };
