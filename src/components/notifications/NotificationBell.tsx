@@ -161,7 +161,8 @@ export default function NotificationBell() {
 
   const timeAgo = (dateStr: string | null) => {
     if (!dateStr) return '';
-    const diff = Date.now() - new Date(dateStr).getTime();
+    const now = new Date().getTime();
+    const diff = now - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
     if (mins < 1) return 'agora';
     if (mins < 60) return `${mins}min`;

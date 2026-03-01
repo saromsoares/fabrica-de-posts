@@ -114,7 +114,8 @@ export default function FabricanteTemplatesPage() {
     // Upload da imagem se houver
     if (formImageFile) {
       const ext = formImageFile.name.split('.').pop();
-      const path = `templates/${factory.id}/${Date.now()}.${ext}`;
+      const timestamp = new Date().getTime();
+      const path = `templates/${factory.id}/${timestamp}.${ext}`;
       const { error: uploadErr } = await supabase.storage
         .from('templates')
         .upload(path, formImageFile, { contentType: formImageFile.type });
