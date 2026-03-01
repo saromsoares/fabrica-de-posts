@@ -11,7 +11,7 @@ import { extractError } from '@/lib/utils';
 import Link from 'next/link';
 import type { Product, BrandKit, Category, Factory, CaptionStyle, UsageInfo, GenerationFields } from '@/types/database';
 import { extractDominantColor } from '@/lib/image-processing';
-import { uploadImage } from '@/lib/upload';
+// uploadImage removido — upload direto ao Supabase Storage
 import { getFontById, loadFont } from '@/lib/fonts';
 import AIGenerationMode from '@/components/studio/AIGenerationMode';
 
@@ -623,14 +623,21 @@ export default function EstudioPage() {
         },
       });
 
-      // Upload (Cloudinary com fallback Supabase)
+      // Upload direto ao Supabase Storage
       const fetchRes = await fetch(dataUrl);
       const blob = await fetchRes.blob();
       const filename = `${userId}/${Date.now()}.png`;
       let imageUrl = dataUrl;
       try {
-        const result = await uploadImage(blob, 'fabrica/generated-arts', filename, { contentType: 'image/png' });
-        imageUrl = result.url;
+        const { data: storageData, error: storageErr } = await supabase.storage
+          .from('generated-arts')
+          .upload(filename, blob, { contentType: 'image/png', upsert: false });
+        if (!storageErr && storageData) {
+          const { data: publicData } = supabase.storage
+            .from('generated-arts')
+            .getPublicUrl(storageData.path);
+          imageUrl = publicData.publicUrl;
+        }
       } catch (err) {
         console.error('Upload fallback para dataUrl:', err);
       }

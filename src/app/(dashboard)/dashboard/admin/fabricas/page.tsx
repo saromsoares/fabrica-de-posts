@@ -8,6 +8,7 @@ import {
   Users, Target, Megaphone, Building2
 } from 'lucide-react';
 import LogoAvatar from '@/components/ui/LogoAvatar';
+import { FileUpload } from '@/components/ui/FileUpload';
 import { extractError } from '@/lib/utils';
 
 /* ═══════════════════════════════════════
@@ -82,8 +83,7 @@ export default function AdminFabricasPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FactoryForm>(emptyForm);
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoUploadedUrl, setLogoUploadedUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -122,14 +122,7 @@ export default function AdminFabricasPage() {
   /* ─── Helpers ─── */
   const clearMessages = () => { setError(null); setSuccess(null); };
 
-  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { setError('Logo muito grande. Máximo: 2MB.'); return; }
-    setLogoFile(file);
-    setLogoPreview(URL.createObjectURL(file));
-    clearMessages();
-  };
+  // handleLogoChange removido — substituído por FileUpload component
 
   const handleEdit = (factory: FactoryRow) => {
     clearMessages();
@@ -147,8 +140,7 @@ export default function AdminFabricasPage() {
       brand_voice_custom: BRAND_VOICE_OPTIONS.find(o => o.value === factory.brand_voice) ? '' : factory.brand_voice || '',
       target_audience: factory.target_audience || '',
     });
-    setLogoPreview(factory.logo_url || null);
-    setLogoFile(null);
+    setLogoUploadedUrl(factory.logo_url || null);
     setStep(1);
     setShowForm(true);
   };
@@ -157,8 +149,7 @@ export default function AdminFabricasPage() {
     setShowForm(false);
     setEditingId(null);
     setForm(emptyForm);
-    setLogoFile(null);
-    setLogoPreview(null);
+    setLogoUploadedUrl(null);
     setStep(1);
     clearMessages();
   };
@@ -182,32 +173,7 @@ export default function AdminFabricasPage() {
     setStep(s => s + 1);
   };
 
-  /* ─── Upload via validate-upload Edge Function ─── */
-  const uploadLogo = async (): Promise<string | null> => {
-    if (!logoFile) return null;
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return null;
-      const fd = new FormData();
-      fd.append('file', logoFile);
-      fd.append('type', 'logo');
-      const { data, error: upErr } = await supabase.functions.invoke('validate-upload', { body: fd });
-      if (upErr || !data?.url) {
-        // Fallback: upload direto via Storage
-        const ext = logoFile.name.split('.').pop()?.toLowerCase() || 'png';
-        const filename = `factories/${Date.now()}-${form.name.replace(/\s+/g, '-').toLowerCase()}.${ext}`;
-        const { data: storageData, error: storageErr } = await supabase.storage
-          .from('fabrica')
-          .upload(filename, logoFile, { contentType: logoFile.type, upsert: true });
-        if (storageErr) return null;
-        const { data: urlData } = supabase.storage.from('fabrica').getPublicUrl(storageData.path);
-        return urlData.publicUrl;
-      }
-      return data.url;
-    } catch {
-      return null;
-    }
-  };
+  // uploadLogo removido — FileUpload component faz o upload diretamente
 
   /* ─── Save ─── */
   const handleSave = async () => {
@@ -217,7 +183,7 @@ export default function AdminFabricasPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setError('Sessão expirada. Faça login novamente.'); setSaving(false); return; }
 
-      const logoUrl = await uploadLogo();
+      const logoUrl = logoUploadedUrl;
       const brandVoiceFinal = form.brand_voice === 'outro' ? form.brand_voice_custom : form.brand_voice;
 
       const payload: Record<string, unknown> = {
@@ -290,7 +256,7 @@ export default function AdminFabricasPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-display text-2xl font-800">Fábricas</h1>
         <button
-          onClick={() => { clearMessages(); setForm(emptyForm); setEditingId(null); setLogoPreview(null); setLogoFile(null); setStep(1); setShowForm(true); }}
+          onClick={() => { clearMessages(); setForm(emptyForm); setEditingId(null); setLogoUploadedUrl(null); setStep(1); setShowForm(true); }}
           className="flex items-center gap-2 px-4 py-2.5 bg-[#e85d75] hover:bg-[#d44d65] text-white text-sm font-600 rounded-xl transition-all"
         >
           <Plus size={16} /> Nova fábrica
@@ -368,23 +334,12 @@ export default function AdminFabricasPage() {
 
                 <div>
                   <label className="block text-sm font-500 text-white/70 mb-1.5">Logo da Fábrica</label>
-                  <div className="flex items-center gap-4">
-                    {/* Preview com fundo branco */}
-                    <div className="w-20 h-20 rounded-xl bg-white border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0 p-2">
-                      {logoPreview ? (
-                        <img src={logoPreview} alt="Preview" className="w-full h-full object-contain" />
-                      ) : (
-                        <Factory size={28} className="text-gray-400" />
-                      )}
-                    </div>
-                    <div>
-                      <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/15 rounded-xl cursor-pointer text-sm text-white/70 transition-all">
-                        <Upload size={16} /> {logoFile ? 'Trocar logo' : 'Subir logo'}
-                        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleLogoChange} />
-                      </label>
-                      <p className="text-[11px] text-white/30 mt-1.5">PNG quadrado, mín. 500×500px. Máx 2MB.</p>
-                    </div>
-                  </div>
+                  <FileUpload
+                    type="logo"
+                    currentUrl={logoUploadedUrl}
+                    onUploadComplete={(url) => { setLogoUploadedUrl(url); }}
+                    onError={(msg) => setError(msg)}
+                  />
                 </div>
 
                 <label className="flex items-center gap-2.5 text-sm text-white/60 cursor-pointer">
@@ -527,8 +482,8 @@ export default function AdminFabricasPage() {
                   {/* Logo + nome */}
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-xl bg-white border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0 p-1.5">
-                      {logoPreview ? (
-                        <img src={logoPreview} alt="Logo" className="w-full h-full object-contain" />
+                      {logoUploadedUrl ? (
+                        <img src={logoUploadedUrl} alt="Logo" className="w-full h-full object-contain" />
                       ) : (
                         <Factory size={24} className="text-gray-400" />
                       )}

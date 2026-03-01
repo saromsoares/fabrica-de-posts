@@ -1,8 +1,17 @@
 /**
  * image-validator.ts
  *
- * Validadores client-side para uploads de imagem.
- * Verifica tipo, proporção e dimensões mínimas antes do upload.
+ * @deprecated Este arquivo está DEPRECIADO desde Março/2026.
+ * Use `@/lib/upload-validator` como fonte única de verdade para validação de uploads.
+ *
+ * Migração:
+ *   - validateLogo(file)        → validateFile(file, 'logo')
+ *   - validateProductImage(file) → validateFile(file, 'product')
+ *   - validateTemplate(file)     → validateFile(file, 'template')
+ *
+ * Componente unificado: `@/components/ui/FileUpload`
+ *
+ * Este arquivo será removido após confirmação de que nenhum componente ativo o importa.
  */
 
 type ValidationResult = {
