@@ -36,6 +36,11 @@ export function getSupabaseStorageUrl(bucket: string, path: string): string {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
 }
 
-export const PLAN_LIMITS: Record<string, number> = { free: 5, loja: 30, pro: 200 };
+/**
+ * @deprecated Use getPlanLimit() ou getAllPlanLimits() de '@/lib/plan-limits' em vez disso.
+ * PLAN_LIMITS foi removido pois continha valores desatualizados (loja=30, pro=200).
+ * A fonte única de verdade é a tabela `plan_limits` do Supabase.
+ */
+// PLAN_LIMITS removido — ver src/lib/plan-limits.ts
 
 export const PLAN_LABELS: Record<string, string> = { free: 'Free', loja: 'Loja', pro: 'Pro' };

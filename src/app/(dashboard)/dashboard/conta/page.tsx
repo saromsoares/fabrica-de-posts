@@ -8,6 +8,7 @@ import {
   Factory, Building2, ShoppingBag, Wrench, Package, LayoutGrid,
 } from 'lucide-react';
 import { PLAN_LABELS } from '@/lib/utils';
+import { getPlanLimit } from '@/lib/plan-limits';
 import type { Profile, BrandKit, Factory as FactoryType, UsageInfo } from '@/types/database';
 
 const STORE_TYPE_OPTIONS = [
@@ -108,7 +109,15 @@ export default function AccountPage() {
       setStoreVoice(p.store_voice || 'informal');
     }
 
-    if (usageData) setUsage(usageData as UsageInfo);
+    if (usageData) {
+      const usageInfo = usageData as UsageInfo;
+      // Se o RPC não retornar o limite, buscar da tabela plan_limits
+      if (!usageInfo.limit || usageInfo.limit <= 0) {
+        const planLimitData = await getPlanLimit(prof?.plan || 'free');
+        usageInfo.limit = planLimitData.monthly_generations;
+      }
+      setUsage(usageInfo);
+    }
 
     // Brand Kit (lojista)
     const { data: bk } = await supabase.from('brand_kits').select('*').eq('user_id', user.id).single();
@@ -563,7 +572,7 @@ export default function AccountPage() {
             <p className="text-xs text-dark-400 mb-1">Uso este mês</p>
             <p className="font-display text-xl font-800">
               {usage?.count ?? 0}
-              <span className="text-sm text-dark-500">/{usage?.limit ?? 5}</span>
+              <span className="text-sm text-dark-500">/{usage?.limit === 999999 ? '\u221e' : (usage?.limit ?? '...')}</span>
             </p>
           </div>
         </div>
