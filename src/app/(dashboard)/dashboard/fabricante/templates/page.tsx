@@ -68,7 +68,16 @@ export default function FabricanteTemplatesPage() {
     setLoading(false);
   }, [supabase]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+      await loadData();
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [loadData, supabase]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

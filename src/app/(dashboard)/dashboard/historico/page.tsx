@@ -72,7 +72,16 @@ export default function HistoricoPage() {
     setLoading(false);
   }, [supabase, filter]);
 
-  useEffect(() => { fetchGenerations(); }, [fetchGenerations]);
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+      await fetchGenerations();
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [fetchGenerations, supabase]);
 
   /* ── Delete ── */
   const handleDelete = async (id: string) => {

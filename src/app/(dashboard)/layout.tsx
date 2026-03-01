@@ -58,13 +58,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const supabase = createClient();
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
+      // SESSION GUARD
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      if (user && !cancelled) {
         const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-        if (data) setProfile(data as Profile);
+        if (data && !cancelled) setProfile(data as Profile);
       }
     })();
+    return () => { cancelled = true; };
   }, [supabase]);
 
   const handleLogout = async () => {

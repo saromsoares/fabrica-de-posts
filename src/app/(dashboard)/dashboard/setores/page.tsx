@@ -13,14 +13,22 @@ export default function SetoresPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
+      // SESSION GUARD
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+
       const { data } = await supabase
         .from('sectors')
         .select('id, name, slug, icon_svg')
         .order('name');
-      if (data) setSectors(data);
-      setLoading(false);
+      if (!cancelled) {
+        if (data) setSectors(data);
+        setLoading(false);
+      }
     })();
+    return () => { cancelled = true; };
   }, [supabase]);
 
   const filtered = sectors.filter(s =>

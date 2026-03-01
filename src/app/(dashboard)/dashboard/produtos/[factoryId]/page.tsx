@@ -20,17 +20,25 @@ export default function FactoryProductsPage() {
   const supabase = createClient();
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
+      // SESSION GUARD
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+
       const [{ data: fac }, { data: prods }, { data: cats }] = await Promise.all([
         supabase.from('factories').select('id, name, logo_url, active, created_at').eq('id', factoryId).single(),
         supabase.from('products').select('id, name, description, category_id, factory_id, image_url, tags, active, created_at, updated_at, category:categories(id, name, slug, created_at)').eq('factory_id', factoryId).eq('active', true).order('name'),
         supabase.from('categories').select('id, name, slug, created_at').order('name'),
       ]);
-      if (fac) setFactory(fac as FactoryType);
-      if (prods) setProducts(prods as (Product & { category?: Category | null })[]);
-      if (cats) setCategories(cats as Category[]);
-      setLoading(false);
+      if (!cancelled) {
+        if (fac) setFactory(fac as FactoryType);
+        if (prods) setProducts(prods as (Product & { category?: Category | null })[]);
+        if (cats) setCategories(cats as Category[]);
+        setLoading(false);
+      }
     })();
+    return () => { cancelled = true; };
   }, [supabase, factoryId]);
 
   const filtered = products.filter((p) => {

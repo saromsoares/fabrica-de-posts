@@ -137,12 +137,17 @@ export default function LojistaDashboard({ userName }: { userName: string }) {
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
-      if (cancelled) return;
+      // SESSION GUARD: verificar sessão antes de buscar dados
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) {
+        console.log('[LojistaDashboard] Sem sessão ativa — abortando fetchData');
+        return;
+      }
       await fetchData();
     };
     run();
     return () => { cancelled = true; };
-  }, [fetchData]);
+  }, [fetchData, supabase]);
 
   if (loading) {
     return (

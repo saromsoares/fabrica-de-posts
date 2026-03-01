@@ -40,7 +40,16 @@ export default function AdminFabricasPage() {
     }
   }, [supabase]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+      await fetchData();
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [fetchData, supabase]);
 
   const clearMessages = () => { setError(null); setSuccess(null); };
 

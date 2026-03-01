@@ -23,14 +23,19 @@ export default function CategoryProductsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
+      // SESSION GUARD
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+
       const { data: catData } = await supabase
         .from('categories')
         .select('id, name, slug, factory_id, factories(id, name, logo_url)')
         .eq('id', categoryId)
         .single();
 
-      if (catData) setCategory(catData as unknown as CategoryDetail);
+      if (!cancelled && catData) setCategory(catData as unknown as CategoryDetail);
 
       const { data: productsData } = await supabase
         .from('products')
@@ -39,9 +44,12 @@ export default function CategoryProductsPage() {
         .eq('active', true)
         .order('name');
 
-      if (productsData) setProducts(productsData);
-      setLoading(false);
+      if (!cancelled) {
+        if (productsData) setProducts(productsData);
+        setLoading(false);
+      }
     })();
+    return () => { cancelled = true; };
   }, [supabase, categoryId]);
 
   if (loading) {

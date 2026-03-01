@@ -9,14 +9,18 @@ export default function AdminPage() {
   const supabase = createClient();
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
       const [{ count: p }, { count: u }, { count: g }] = await Promise.all([
         supabase.from('products').select('id', { count: 'exact', head: true }),
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('generations').select('id', { count: 'exact', head: true }),
       ]);
-      setStats({ products: p || 0, users: u || 0, generations: g || 0 });
+      if (!cancelled) setStats({ products: p || 0, users: u || 0, generations: g || 0 });
     })();
+    return () => { cancelled = true; };
   }, [supabase]);
 
   const cards = [

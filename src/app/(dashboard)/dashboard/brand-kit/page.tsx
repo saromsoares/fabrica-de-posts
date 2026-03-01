@@ -25,9 +25,12 @@ export default function BrandKitPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // SESSION GUARD
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || cancelled) return;
       const { data } = await supabase.from('brand_kits').select('*').eq('user_id', user.id).single();
       if (!cancelled) {
         if (data) {

@@ -466,8 +466,11 @@ export default function EstudioPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // SESSION GUARD
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || cancelled) return;
       if (!cancelled) setUserId(user.id);
       const [{ data: prod }, { data: bk }, { data: usageData }] = await Promise.all([
         supabase.from('products').select('id, name, description, category_id, factory_id, image_url, tags, active, created_at, updated_at, category:categories(id, name, slug, created_at), factory:factories(id, name, logo_url, active, created_at)').eq('id', productId).single(),
