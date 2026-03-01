@@ -13,12 +13,14 @@ const PAGE_SIZE = 20;
 type ProductForm = {
   name: string;
   description: string;
+  main_benefit: string;
+  technical_specs: string;
   category_id: string;
   factory_id: string;
   tags: string;
   active: boolean;
 };
-const emptyForm: ProductForm = { name: '', description: '', category_id: '', factory_id: '', tags: '', active: true };
+const emptyForm: ProductForm = { name: '', description: '', main_benefit: '', technical_specs: '', category_id: '', factory_id: '', tags: '', active: true };
 
 export default function AdminProdutosPage() {
   const supabase = createClient();
@@ -70,7 +72,7 @@ export default function AdminProdutosPage() {
       const to = from + PAGE_SIZE - 1;
       const { data: prods, count: prodCount, error: prodErr } = await supabase
         .from('products')
-        .select('id, name, description, category_id, factory_id, image_url, tags, active, created_at, updated_at, category:categories(id, name, slug, created_at), factory:factories(id, name, logo_url, active, created_at)', { count: 'exact' })
+        .select('id, name, description, category_id, factory_id, image_url, tags, active, created_at, updated_at, category:categories!category_id(id, name, slug, created_at), factory:factories!factory_id(id, name, logo_url, active, created_at)', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, to);
 
@@ -129,6 +131,8 @@ export default function AdminProdutosPage() {
     setForm({
       name: p.name,
       description: p.description || '',
+      main_benefit: (p as Product & { main_benefit?: string }).main_benefit || '',
+      technical_specs: (p as Product & { technical_specs?: string }).technical_specs || '',
       category_id: p.category_id || '',
       factory_id: p.factory_id || '',
       tags: (p.tags || []).join(', '),
@@ -178,6 +182,8 @@ export default function AdminProdutosPage() {
       const payload = {
         name: form.name.trim(),
         description: form.description.trim() || null,
+        main_benefit: form.main_benefit.trim() || null,
+        technical_specs: form.technical_specs.trim() || null,
         category_id: form.category_id || null,
         factory_id: form.factory_id || null,
         tags: form.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean),
@@ -316,7 +322,7 @@ export default function AdminProdutosPage() {
               <div>
                 <label className="block text-sm font-500 text-dark-300 mb-1.5">Imagem do Produto</label>
                 <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 rounded-xl bg-dark-800 border-2 border-dashed border-dark-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-20 h-20 rounded-xl bg-white border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden flex-shrink-0">
                     {imagePreview
                       ? <img src={imagePreview} alt="" className="w-full h-full object-cover" />
                       : <Package size={24} className="text-dark-500" />}
@@ -359,6 +365,30 @@ export default function AdminProdutosPage() {
                   className={`${inputClass} resize-none`}
                   rows={2}
                   placeholder="Descrição opcional do produto..."
+                />
+              </div>
+
+              {/* Benefício Principal */}
+              <div>
+                <label className="block text-sm font-500 text-dark-300 mb-1.5">Benefício Principal</label>
+                <input
+                  type="text"
+                  value={form.main_benefit}
+                  onChange={e => setForm({ ...form, main_benefit: e.target.value })}
+                  className={inputClass}
+                  placeholder="Ex: Visibilidade 3x superior ao halógeno convencional"
+                />
+              </div>
+
+              {/* Especificações Técnicas */}
+              <div>
+                <label className="block text-sm font-500 text-dark-300 mb-1.5">Especificações Técnicas</label>
+                <textarea
+                  value={form.technical_specs}
+                  onChange={e => setForm({ ...form, technical_specs: e.target.value })}
+                  className={`${inputClass} resize-none`}
+                  rows={3}
+                  placeholder="Ex: 6000K, 55W, IP67, Tensão: 9-32V, Fluxo: 4500lm"
                 />
               </div>
 
@@ -416,7 +446,7 @@ export default function AdminProdutosPage() {
             {products.map(p => (
               <div key={p.id} className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-4">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-14 h-14 rounded-xl bg-dark-800 overflow-hidden flex-shrink-0">
+                  <div className="w-14 h-14 rounded-xl bg-white border border-gray-200 overflow-hidden flex-shrink-0 p-1">
                     {p.image_url
                       ? <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
                       : <div className="w-full h-full flex items-center justify-center"><Package size={20} className="text-dark-600" /></div>}

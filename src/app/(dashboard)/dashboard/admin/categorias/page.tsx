@@ -2,29 +2,52 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
-import { Plus, Trash2, X, AlertCircle, CheckCircle, Tag } from 'lucide-react';
+import { Plus, Trash2, X, AlertCircle, CheckCircle, Tag, Factory } from 'lucide-react';
 import { extractError } from '@/lib/utils';
-import type { Category } from '@/types/database';
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  factory_id: string | null;
+  created_at: string;
+  factories?: { id: string; name: string; logo_url: string | null } | null;
+}
+
+interface FactoryOption {
+  id: string;
+  name: string;
+  logo_url: string | null;
+}
 
 export default function AdminCategoriasPage() {
   const supabase = createClient();
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [factories, setFactories] = useState<FactoryOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newFactoryId, setNewFactoryId] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const { data, error: err } = await supabase
-        .from('categories')
-        .select('id, name, slug, created_at')
-        .order('name');
-      if (err) throw err;
-      setCategories((data || []) as Category[]);
+      const [{ data: cats }, { data: facs }] = await Promise.all([
+        supabase
+          .from('categories')
+          .select('id, name, slug, factory_id, created_at, factories:factories!factory_id(id, name, logo_url)')
+          .order('name'),
+        supabase
+          .from('factories')
+          .select('id, name, logo_url')
+          .eq('active', true)
+          .order('name'),
+      ]);
+      setCategories((cats || []) as Category[]);
+      setFactories((facs || []) as FactoryOption[]);
     } catch (err) {
       setError(`Erro ao carregar: ${extractError(err)}`);
     } finally {
@@ -53,7 +76,6 @@ export default function AdminCategoriasPage() {
     const name = newName.trim();
     if (!name) { setError('Nome da categoria é obrigatório.'); return; }
 
-    // Verificar duplicata
     if (categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
       setError('Já existe uma categoria com esse nome.');
       return;
@@ -61,13 +83,20 @@ export default function AdminCategoriasPage() {
 
     setSaving(true);
     try {
-      const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      const { error: err } = await supabase
-        .from('categories')
-        .insert({ name, slug });
+      const slug = name
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '');
+
+      const payload: Record<string, unknown> = { name, slug };
+      if (newFactoryId) payload.factory_id = newFactoryId;
+
+      const { error: err } = await supabase.from('categories').insert(payload);
       if (err) throw new Error(err.message);
 
       setNewName('');
+      setNewFactoryId('');
       setShowForm(false);
       showSuccessMsg(`Categoria "${name}" criada!`);
       fetchData();
@@ -91,7 +120,7 @@ export default function AdminCategoriasPage() {
     }
   };
 
-  const inputClass = 'w-full px-4 py-2.5 bg-dark-950 border border-dark-700/50 rounded-xl text-white placeholder:text-dark-500 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20 transition-all text-sm';
+  const inputClass = 'w-full px-4 py-2.5 bg-[#0f0f1a] border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-[#e85d75]/50 focus:ring-1 focus:ring-[#e85d75]/20 transition-all text-sm';
 
   return (
     <div className="animate-fade-in-up">
@@ -106,11 +135,11 @@ export default function AdminCategoriasPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display text-2xl font-800">Categorias</h1>
-          <p className="text-dark-500 text-sm mt-0.5">{categories.length} categoria{categories.length !== 1 ? 's' : ''} cadastrada{categories.length !== 1 ? 's' : ''}</p>
+          <p className="text-white/30 text-sm mt-0.5">{categories.length} categoria{categories.length !== 1 ? 's' : ''}</p>
         </div>
         <button
-          onClick={() => { setError(null); setNewName(''); setShowForm(true); }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-600 rounded-xl transition-all"
+          onClick={() => { setError(null); setNewName(''); setNewFactoryId(''); setShowForm(true); }}
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#e85d75] hover:bg-[#d44d65] text-white text-sm font-600 rounded-xl transition-all"
         >
           <Plus size={16} /> Nova categoria
         </button>
@@ -122,14 +151,14 @@ export default function AdminCategoriasPage() {
         </div>
       )}
 
-      {/* Modal rápido de nova categoria */}
+      {/* Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowForm(false)}>
-          <div className="bg-dark-900 border border-dark-800 rounded-2xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-[#0f0f1a] border border-white/10 rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
               <h2 className="font-display font-700 text-lg">Nova categoria</h2>
-              <button onClick={() => setShowForm(false)} className="p-1 rounded-lg hover:bg-dark-800">
-                <X size={20} className="text-dark-400" />
+              <button onClick={() => setShowForm(false)} className="p-1 rounded-lg hover:bg-white/10">
+                <X size={20} className="text-white/50" />
               </button>
             </div>
 
@@ -139,23 +168,42 @@ export default function AdminCategoriasPage() {
               </div>
             )}
 
-            <div className="mb-4">
-              <label className="block text-sm font-500 text-dark-300 mb-1.5">Nome *</label>
-              <input
-                type="text"
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAdd()}
-                className={inputClass}
-                placeholder="Ex: Iluminação, Acessórios, Elétrica..."
-                autoFocus
-              />
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-500 text-white/70 mb-1.5">Nome *</label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                  className={inputClass}
+                  placeholder="Ex: Iluminação, Acessórios, Elétrica..."
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-500 text-white/70 mb-1.5 flex items-center gap-1.5">
+                  <Factory size={14} /> Fábrica vinculada
+                </label>
+                <select
+                  value={newFactoryId}
+                  onChange={e => setNewFactoryId(e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">Sem fábrica (global)</option>
+                  {factories.map(f => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-white/30 mt-1">Deixe em branco para categoria global (todas as fábricas).</p>
+              </div>
             </div>
 
             <button
               onClick={handleAdd}
               disabled={saving || !newName.trim()}
-              className="w-full py-3 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white font-display font-600 rounded-xl transition-all text-sm"
+              className="w-full mt-5 py-3 bg-[#e85d75] hover:bg-[#d44d65] disabled:opacity-40 text-white font-display font-600 rounded-xl transition-all text-sm"
             >
               {saving ? 'Salvando...' : 'Criar categoria'}
             </button>
@@ -165,24 +213,34 @@ export default function AdminCategoriasPage() {
 
       {/* Lista */}
       {loading ? (
-        <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-14 rounded-2xl bg-dark-900/60 animate-pulse" />)}</div>
+        <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-14 rounded-2xl bg-white/5 animate-pulse" />)}</div>
       ) : categories.length === 0 ? (
-        <div className="text-center py-20 bg-dark-900/40 border border-dark-800/40 rounded-2xl">
-          <Tag size={48} className="mx-auto text-dark-600 mb-4" />
-          <p className="text-dark-400 mb-1">Nenhuma categoria cadastrada.</p>
-          <p className="text-dark-500 text-sm">Clique em &quot;Nova categoria&quot; para começar.</p>
+        <div className="text-center py-20 bg-white/5 border border-white/10 rounded-2xl">
+          <Tag size={48} className="mx-auto text-white/20 mb-4" />
+          <p className="text-white/40 mb-1">Nenhuma categoria cadastrada.</p>
+          <p className="text-white/25 text-sm">Clique em &quot;Nova categoria&quot; para começar.</p>
         </div>
       ) : (
         <div className="space-y-2">
           {categories.map(c => (
-            <div key={c.id} className="flex items-center justify-between px-5 py-3.5 bg-dark-900/60 border border-dark-800/40 rounded-xl hover:border-dark-700/60 transition-all">
+            <div key={c.id} className="flex items-center justify-between px-5 py-3.5 bg-white/5 border border-white/10 rounded-xl hover:border-white/20 transition-all">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-brand-500/10 flex items-center justify-center">
-                  <Tag size={14} className="text-brand-400" />
+                <div className="w-8 h-8 rounded-lg bg-[#e85d75]/10 flex items-center justify-center flex-shrink-0">
+                  <Tag size={14} className="text-[#e85d75]" />
                 </div>
                 <div>
-                  <p className="font-500 text-sm">{c.name}</p>
-                  <p className="text-[11px] text-dark-500">{c.slug}</p>
+                  <p className="font-500 text-sm text-white">{c.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <p className="text-[11px] text-white/30">{c.slug}</p>
+                    {c.factories ? (
+                      <span className="flex items-center gap-1 text-[10px] text-white/40 bg-white/10 px-1.5 py-0.5 rounded-full">
+                        <Factory size={9} />
+                        {c.factories.name}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-white/25 bg-white/5 px-1.5 py-0.5 rounded-full">global</span>
+                    )}
+                  </div>
                 </div>
               </div>
               <button
@@ -190,7 +248,7 @@ export default function AdminCategoriasPage() {
                 className="p-2 rounded-lg hover:bg-red-500/10 transition-colors"
                 title="Excluir"
               >
-                <Trash2 size={14} className="text-dark-500 hover:text-red-400" />
+                <Trash2 size={14} className="text-white/30 hover:text-red-400" />
               </button>
             </div>
           ))}

@@ -473,7 +473,7 @@ export default function EstudioPage() {
       if (!user || cancelled) return;
       if (!cancelled) setUserId(user.id);
       const [{ data: prod }, { data: bk }, { data: usageData }] = await Promise.all([
-        supabase.from('products').select('id, name, description, category_id, factory_id, image_url, tags, active, created_at, updated_at, category:categories(id, name, slug, created_at), factory:factories(id, name, logo_url, active, created_at)').eq('id', productId).single(),
+        supabase.from('products').select('id, name, description, category_id, factory_id, image_url, tags, active, created_at, updated_at, category:categories!category_id(id, name, slug, created_at), factory:factories!factory_id(id, name, logo_url, active, created_at)').eq('id', productId).single(),
         supabase.from('brand_kits').select('id, user_id, logo_url, primary_color, secondary_color, store_name, instagram_handle, whatsapp').eq('user_id', user.id).single(),
         supabase.rpc('get_usage', { p_user_id: user.id }),
       ]);
@@ -1078,8 +1078,8 @@ export default function EstudioPage() {
         </Link>
         <div className="flex items-center gap-4">
           {product.image_url && (
-            <div className="w-14 h-14 rounded-xl bg-dark-800 overflow-hidden flex-shrink-0">
-              <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+            <div className="w-14 h-14 rounded-xl bg-white border border-gray-200 overflow-hidden flex-shrink-0 p-1">
+              <img src={product.image_url} alt={product.name} className="w-full h-full object-contain" />
             </div>
           )}
           <div>
