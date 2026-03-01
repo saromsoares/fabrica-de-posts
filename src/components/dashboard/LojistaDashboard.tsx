@@ -11,6 +11,7 @@ import {
   ArrowRight, AlertCircle, Zap, Package,
   TrendingUp, Crown, RefreshCw, TrendingUp as UpgradeIcon,
 } from 'lucide-react';
+import ProfileCompletion from './ProfileCompletion';
 
 const log = createLogger('LojistaDashboard');
 
@@ -272,6 +273,9 @@ export default function LojistaDashboard({ userName }: { userName: string }) {
           </Link>
         </div>
       )}
+
+      {/* Profile Completion */}
+      <ProfileCompletion />
 
       {/* Greeting */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

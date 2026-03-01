@@ -291,6 +291,12 @@ function FabricanteWizard({
             <Factory size={20} className="text-blue-400" />
             Identidade da Fábrica
           </h2>
+          <div className="flex items-start gap-3 px-4 py-3 bg-blue-600/5 border border-blue-500/15 rounded-xl">
+            <Target size={16} className="text-blue-400 mt-0.5 shrink-0" />
+            <p className="text-xs text-dark-300 leading-relaxed">
+              <strong className="text-blue-400">Fabricante</strong> — Você cadastra seus produtos e templates. Os lojistas parceiros usam seu catálogo para gerar artes profissionais com a marca deles. Mais visibilidade e recompra para sua fábrica.
+            </p>
+          </div>
 
           <div>
             <label className="block text-xs font-700 text-dark-400 uppercase tracking-wider mb-2">Nome da Fábrica *</label>
@@ -710,6 +716,12 @@ function LojistaWizard({
             <Store size={20} className="text-brand-400" />
             Sua Loja
           </h2>
+          <div className="flex items-start gap-3 px-4 py-3 bg-brand-600/5 border border-brand-500/15 rounded-xl">
+            <Target size={16} className="text-brand-400 mt-0.5 shrink-0" />
+            <p className="text-xs text-dark-300 leading-relaxed">
+              <strong className="text-brand-400">Lojista</strong> — Você acessa o catálogo de produtos das fábricas parceiras, escolhe templates profissionais e gera artes prontas para suas redes sociais. Ideal para quem vende e precisa de conteúdo rápido.
+            </p>
+          </div>
 
           <div>
             <label className="block text-xs font-700 text-dark-400 uppercase tracking-wider mb-2">Nome da Loja *</label>
@@ -802,7 +814,12 @@ function LojistaWizard({
                 <input
                   type="text"
                   value={data.primaryColor}
-                  onChange={(e) => set('primaryColor', e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === '' || /^#[0-9A-Fa-f]{0,6}$/.test(v)) set('primaryColor', v);
+                  }}
+                  placeholder="#e85d75"
+                  maxLength={7}
                   className="flex-1 px-3 py-2 bg-dark-950/50 border border-dark-800/50 rounded-xl text-white text-sm focus:outline-none focus:border-brand-500/50"
                 />
               </div>
@@ -819,7 +836,12 @@ function LojistaWizard({
                 <input
                   type="text"
                   value={data.secondaryColor}
-                  onChange={(e) => set('secondaryColor', e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === '' || /^#[0-9A-Fa-f]{0,6}$/.test(v)) set('secondaryColor', v);
+                  }}
+                  placeholder="#ffffff"
+                  maxLength={7}
                   className="flex-1 px-3 py-2 bg-dark-950/50 border border-dark-800/50 rounded-xl text-white text-sm focus:outline-none focus:border-brand-500/50"
                 />
               </div>
@@ -1018,29 +1040,43 @@ function LojistaWizard({
           </button>
         ) : <div />}
 
-        {step < 3 ? (
-          <button
-            type="button"
-            onClick={() => {
-              if (canNext[step]()) { setError(null); setStep((s) => s + 1); }
-              else setError('Preencha os campos obrigatórios.');
-            }}
-            className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-700 rounded-xl transition-all text-sm"
-          >
-            Próximo
-            <ArrowRight size={16} />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleComplete}
-            disabled={saving || !hasFollowed}
-            className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-700 rounded-xl transition-all disabled:opacity-50 text-sm"
-          >
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-            Concluir
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {/* Botão Pular — visível apenas nos steps opcionais (1=Brand Kit, 2=Estilo) */}
+          {(step === 1 || step === 2) && (
+            <button
+              type="button"
+              onClick={() => { setError(null); setStep((s) => s + 1); }}
+              className="flex items-center gap-1.5 px-4 py-2.5 text-dark-400 hover:text-white text-sm font-500 transition-all"
+            >
+              Pular
+              <ArrowRight size={14} />
+            </button>
+          )}
+
+          {step < 3 ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (canNext[step]()) { setError(null); setStep((s) => s + 1); }
+                else setError('Preencha os campos obrigatórios.');
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-700 rounded-xl transition-all text-sm"
+            >
+              Próximo
+              <ArrowRight size={16} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleComplete}
+              disabled={saving || !hasFollowed}
+              className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-700 rounded-xl transition-all disabled:opacity-50 text-sm"
+            >
+              {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+              Concluir
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
