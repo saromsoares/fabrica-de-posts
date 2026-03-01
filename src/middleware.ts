@@ -89,9 +89,10 @@ export async function middleware(request: NextRequest) {
 
   // ── 5. Buscar contexto de auth via RPC (1 única query ao banco) ──
   // A RPC get_auth_context usa SECURITY DEFINER — sem RLS, sem recursão, ~1.5ms
+  // A RPC retorna TABLE — usar maybeSingle() para pegar a primeira linha
   const { data: authContext, error: rpcError } = await supabase
     .rpc('get_auth_context', { p_user_id: session.user.id })
-    .single();
+    .maybeSingle();
 
   if (rpcError || !authContext) {
     // RPC falhou (profile não existe ou banco inacessível)
