@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase-browser';
 import { invokeWithAuth } from '@/hooks/useAuthenticatedFunction';
 import Link from 'next/link';
 import { Loader2, ArrowLeft, Factory as FactoryIcon, CheckCircle, Clock, UserPlus, UserMinus, Search } from 'lucide-react';
+import LogoAvatar from '@/components/ui/LogoAvatar';
 import type { Sector, Factory, FactoryFollower } from '@/types/database';
 
 type FactoryWithStatus = Factory & {
@@ -170,13 +171,7 @@ export default function SectorFactoriesPage() {
               >
                 <div className="flex items-start gap-4">
                   {/* Logo */}
-                  <div className="w-14 h-14 bg-white rounded-full shadow-sm border border-gray-100 flex items-center justify-center overflow-hidden p-1.5 flex-shrink-0">
-                    {factory.logo_url ? (
-                      <img src={factory.logo_url} alt={factory.name} className="max-w-[80%] max-h-[80%] object-contain" />
-                    ) : (
-                      <FactoryIcon size={24} className="text-gray-400" />
-                    )}
-                  </div>
+                  <LogoAvatar src={factory.logo_url} alt={factory.name} size="md" />
 
                   <div className="flex-1 min-w-0">
                     <h3 className="font-700 text-white truncate">{factory.name}</h3>

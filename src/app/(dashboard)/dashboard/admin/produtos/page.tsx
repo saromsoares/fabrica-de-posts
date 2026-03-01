@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { uploadImage } from '@/lib/upload';
+import { validateProductImage } from '@/lib/validators/image-validator';
 import { Plus, Pencil, Trash2, X, Upload, AlertCircle, CheckCircle, Package } from 'lucide-react';
 import { extractError } from '@/lib/utils';
 import type { Product, Category, Factory } from '@/types/database';
@@ -104,11 +105,12 @@ export default function AdminProdutosPage() {
     setTimeout(() => setSuccess(null), 3500);
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) { setError('Imagem muito grande. Máx 5MB.'); return; }
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { setError('Formato inválido. Use PNG, JPG ou WebP.'); return; }
+    const validation = await validateProductImage(file);
+    if (!validation.valid) { setError(validation.error!); return; }
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
     clearMessages();
@@ -315,9 +317,9 @@ export default function AdminProdutosPage() {
                   <div>
                     <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-dark-800 hover:bg-dark-700 rounded-xl cursor-pointer text-sm text-dark-300 transition-all">
                       <Upload size={16} /> {imageFile ? 'Trocar imagem' : 'Subir imagem'}
-                      <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleImageChange} />
+                      <input type="file" accept="image/png" className="hidden" onChange={handleImageChange} />
                     </label>
-                    <p className="text-[11px] text-dark-500 mt-1.5">PNG, JPG ou WebP. Máx 5MB.</p>
+                    <p className="text-[11px] text-dark-500 mt-1.5">PNG, quadrado, mínimo 1080x1080px. Máx 5MB.</p>
                   </div>
                 </div>
               </div>

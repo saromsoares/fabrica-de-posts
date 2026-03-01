@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
-import { Search, Package, Zap, ArrowLeft, Factory } from 'lucide-react';
+import { Search, Package, Zap, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import ProductCard from '@/components/product/ProductCard';
+import LogoAvatar from '@/components/ui/LogoAvatar';
 import type { Product, Category, Factory as FactoryType } from '@/types/database';
 
 export default function FactoryProductsPage() {
@@ -69,13 +71,7 @@ export default function FactoryProductsPage() {
       </Link>
 
       <div className="flex items-center gap-4 mb-8">
-        <div className="w-16 h-16 rounded-2xl bg-white border border-dark-700/50 flex items-center justify-center overflow-hidden flex-shrink-0 p-1">
-          {factory.logo_url ? (
-            <img src={factory.logo_url} alt={factory.name} className="w-full h-full object-contain" />
-          ) : (
-            <Factory size={28} className="text-slate-300" />
-          )}
-        </div>
+        <LogoAvatar src={factory.logo_url} alt={factory.name} size="lg" />
         <div>
           <h1 className="font-display text-3xl font-800 tracking-tight">{factory.name}</h1>
           <p className="text-dark-400 mt-0.5 text-sm">{products.length} produto{products.length !== 1 ? 's' : ''} disponíve{products.length !== 1 ? 'is' : 'l'}</p>
@@ -117,27 +113,18 @@ export default function FactoryProductsPage() {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map((product) => (
-            <div key={product.id}
-              className="group bg-dark-900/60 border border-dark-800/40 rounded-2xl overflow-hidden hover:border-dark-700/60 transition-all">
-              <div className="aspect-square bg-white flex items-center justify-center overflow-hidden p-4">
-                {product.image_url ? (
-                  <img src={product.image_url} alt={product.name}
-                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
-                ) : (
-                  <Package size={32} className="text-slate-300" />
-                )}
-              </div>
-              <div className="p-3">
-                <h3 className="font-display font-600 text-sm truncate">{product.name}</h3>
-                {product.category && (
-                  <p className="text-[11px] text-dark-500 mt-0.5">{product.category.name}</p>
-                )}
+            <ProductCard
+              key={product.id}
+              name={product.name}
+              imageUrl={product.image_url}
+              category={product.category?.name}
+              action={
                 <Link href={`/dashboard/estudio/${product.id}`}
-                  className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-600 rounded-xl transition-all duration-200 hover:shadow-[0_0_20px_rgba(224,96,78,0.2)]">
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-600 rounded-xl transition-all duration-200 hover:shadow-[0_0_20px_rgba(224,96,78,0.2)]">
                   <Zap size={14} /> Criar Post
                 </Link>
-              </div>
-            </div>
+              }
+            />
           ))}
         </div>
       )}
