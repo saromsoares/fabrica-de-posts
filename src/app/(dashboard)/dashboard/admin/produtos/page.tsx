@@ -88,8 +88,15 @@ export default function AdminProdutosPage() {
   }, [supabase]);
 
   useEffect(() => {
-    fetchData(page);
-  }, [fetchData, page]);
+    let cancelled = false;
+    async function run() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+      await fetchData(page);
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [fetchData, page, supabase]);
 
   // ─── Auto-select se só tem 1 fábrica ───
   useEffect(() => {

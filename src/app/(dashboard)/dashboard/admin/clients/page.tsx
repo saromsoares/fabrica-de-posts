@@ -37,7 +37,16 @@ export default function AdminClientsPage() {
     setLoading(false);
   }, [supabase]);
 
-  useEffect(() => { fetchClients(page); }, [fetchClients, page]);
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+      await fetchClients(page);
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [fetchClients, page, supabase]);
 
   const handleChangePlan = async (userId: string, plan: string) => {
     await supabase.from('profiles').update({ plan }).eq('id', userId);

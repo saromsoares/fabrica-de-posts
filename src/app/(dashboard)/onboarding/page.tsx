@@ -334,13 +334,31 @@ function LojistaOnboarding({
     setLoading(false);
   }, [supabase, userId]);
 
-  useEffect(() => { fetchFactories(); }, [fetchFactories]);
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+      await fetchFactories();
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [fetchFactories, supabase]);
 
   const handleFollow = async (factoryId: string) => {
     setActionLoading(factoryId);
     setError(null);
 
     try {
+      // SESSION GUARD: verificar sessão antes de chamar Edge Function
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('[onboarding] Sem sessão ativa para chamar manage-followers');
+        setError('Sessão expirada. Faça login novamente.');
+        setActionLoading(null);
+        return;
+      }
+
       const { error: fnError } = await supabase.functions.invoke('manage-followers', {
         body: { action: 'follow', factory_id: factoryId },
       });

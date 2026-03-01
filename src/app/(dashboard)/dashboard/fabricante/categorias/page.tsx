@@ -102,7 +102,16 @@ export default function FabricanteCategoriesPage() {
     setLoading(false);
   }, [supabase, router]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+      await loadData();
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [loadData, supabase]);
 
   const handleSave = async () => {
     if (!formName.trim() || !factory) return;

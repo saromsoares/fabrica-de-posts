@@ -18,8 +18,11 @@ export default function AccountPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // SESSION GUARD
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || cancelled) return;
       if (!cancelled) setEmail(user.email || '');
       const [{ data: prof }, { data: usageData }] = await Promise.all([
         supabase.from('profiles').select('id, full_name, role, plan, onboarding_complete, created_at').eq('id', user.id).single(),

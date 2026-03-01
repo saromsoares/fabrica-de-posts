@@ -17,8 +17,11 @@ export default function DashboardHome() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // SESSION GUARD
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || cancelled) return;
 
       const { data: profile } = await supabase
         .from('profiles')

@@ -22,7 +22,12 @@ export default function FactoryCategoriesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
+      // SESSION GUARD
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+
       // Buscar fábrica com setor
       const { data: factoryData } = await supabase
         .from('factories')
@@ -51,9 +56,12 @@ export default function FactoryCategoriesPage() {
         })
       );
 
-      setCategories(enriched);
-      setLoading(false);
+      if (!cancelled) {
+        setCategories(enriched);
+        setLoading(false);
+      }
     })();
+    return () => { cancelled = true; };
   }, [supabase, factoryId]);
 
   if (loading) {

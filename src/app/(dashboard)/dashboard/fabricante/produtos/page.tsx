@@ -136,7 +136,16 @@ export default function FabricanteProdutosPage() {
     setLoading(false);
   }, [supabase, router]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+      await fetchData();
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [fetchData, supabase]);
 
   /* ─── Filtered products ─── */
   const filteredProducts = useMemo(() => {

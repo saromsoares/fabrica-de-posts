@@ -66,7 +66,16 @@ export default function SectorFactoriesPage() {
     setLoading(false);
   }, [supabase, sectorSlug]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+      await loadData();
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [loadData, supabase]);
 
   const handleFollow = async (factoryId: string) => {
     setActionLoading(factoryId);

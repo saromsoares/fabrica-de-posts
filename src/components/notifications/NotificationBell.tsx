@@ -24,6 +24,13 @@ export default function NotificationBell() {
 
   const fetchUnreadCount = useCallback(async () => {
     try {
+      // SESSION GUARD: verificar sessão antes de acessar dados
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log('[NotificationBell] Sem sessão ativa — abortando fetchUnreadCount');
+        return;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
@@ -42,6 +49,14 @@ export default function NotificationBell() {
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     try {
+      // SESSION GUARD: verificar sessão antes de acessar dados
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log('[NotificationBell] Sem sessão ativa — abortando fetchNotifications');
+        setLoading(false);
+        return;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
@@ -59,12 +74,15 @@ export default function NotificationBell() {
     setLoading(false);
   }, [supabase]);
 
-  // Poll unread count every 30s
+  // Poll unread count every 30s — com session guard e cleanup
   useEffect(() => {
     let cancelled = false;
 
     const run = async () => {
       if (cancelled) return;
+      // SESSION GUARD no polling
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
       await fetchUnreadCount();
     };
 
@@ -77,7 +95,7 @@ export default function NotificationBell() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [fetchUnreadCount]);
+  }, [fetchUnreadCount, supabase]);
 
   // Fetch full list when panel opens
   useEffect(() => {
@@ -98,6 +116,10 @@ export default function NotificationBell() {
   }, [open]);
 
   const markRead = async (id: string) => {
+    // SESSION GUARD
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
     await supabase
       .from('notifications')
       .update({ read: true })
@@ -107,6 +129,10 @@ export default function NotificationBell() {
   };
 
   const markAllRead = async () => {
+    // SESSION GUARD
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -120,6 +146,10 @@ export default function NotificationBell() {
   };
 
   const deleteNotification = async (id: string) => {
+    // SESSION GUARD
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
     const notif = notifications.find(n => n.id === id);
     await supabase
       .from('notifications')

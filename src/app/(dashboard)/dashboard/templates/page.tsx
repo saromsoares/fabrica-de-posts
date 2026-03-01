@@ -16,6 +16,9 @@ export default function TemplatesPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // SESSION GUARD
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
       const { data } = await supabase.from('templates').select('id, name, format, preview_url, active, created_at').eq('active', true).order('name');
       if (!cancelled) {
         if (data) setTemplates(data as Template[]);

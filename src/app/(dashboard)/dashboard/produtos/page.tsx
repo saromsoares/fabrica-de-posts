@@ -68,7 +68,16 @@ export default function ProdutosPage() {
     setLoading(false);
   }, [supabase]);
 
-  useEffect(() => { fetchFactories(); }, [fetchFactories]);
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+      await fetchFactories();
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [fetchFactories, supabase]);
 
   const handleFollow = async (factoryId: string) => {
     setActionLoading(factoryId);
