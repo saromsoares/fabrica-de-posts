@@ -120,7 +120,7 @@ export default function AdminCategoriasPage() {
     }
   };
 
-  const inputClass = 'w-full px-4 py-2.5 bg-[#0f0f1a] border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-[#e85d75]/50 focus:ring-1 focus:ring-[#e85d75]/20 transition-all text-sm';
+  const inputClass = 'w-full px-4 py-2.5 bg-dark-950 border border-dark-700/50 rounded-xl text-white placeholder:text-dark-500 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/15 transition-all text-sm';
 
   return (
     <div className="animate-fade-in-up">
@@ -139,7 +139,7 @@ export default function AdminCategoriasPage() {
         </div>
         <button
           onClick={() => { setError(null); setNewName(''); setNewFactoryId(''); setShowForm(true); }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#e85d75] hover:bg-[#d44d65] text-white text-sm font-600 rounded-xl transition-all"
+          className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-600 rounded-xl transition-all"
         >
           <Plus size={16} /> Nova categoria
         </button>
@@ -154,10 +154,10 @@ export default function AdminCategoriasPage() {
       {/* Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowForm(false)}>
-          <div className="bg-[#0f0f1a] border border-white/10 rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+          <div className="bg-dark-950 border border-dark-700/50 rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-display font-700 text-lg">Nova categoria</h2>
-              <button onClick={() => setShowForm(false)} className="p-1 rounded-lg hover:bg-white/10">
+              <button onClick={() => setShowForm(false)} className="p-1 rounded-lg hover:bg-dark-800/60">
                 <X size={20} className="text-white/50" />
               </button>
             </div>
@@ -203,7 +203,7 @@ export default function AdminCategoriasPage() {
             <button
               onClick={handleAdd}
               disabled={saving || !newName.trim()}
-              className="w-full mt-5 py-3 bg-[#e85d75] hover:bg-[#d44d65] disabled:opacity-40 text-white font-display font-600 rounded-xl transition-all text-sm"
+              className="w-full mt-5 py-3 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white font-display font-600 rounded-xl transition-all text-sm"
             >
               {saving ? 'Salvando...' : 'Criar categoria'}
             </button>
@@ -213,9 +213,9 @@ export default function AdminCategoriasPage() {
 
       {/* Lista */}
       {loading ? (
-        <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-14 rounded-2xl bg-white/5 animate-pulse" />)}</div>
+        <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-14 rounded-2xl skeleton-shimmer" />)}</div>
       ) : categories.length === 0 ? (
-        <div className="text-center py-20 bg-white/5 border border-white/10 rounded-2xl">
+        <div className="text-center py-20 bg-dark-900/40 border border-dark-800/30 rounded-2xl">
           <Tag size={48} className="mx-auto text-white/20 mb-4" />
           <p className="text-white/40 mb-1">Nenhuma categoria cadastrada.</p>
           <p className="text-white/25 text-sm">Clique em &quot;Nova categoria&quot; para começar.</p>
@@ -223,22 +223,22 @@ export default function AdminCategoriasPage() {
       ) : (
         <div className="space-y-2">
           {categories.map(c => (
-            <div key={c.id} className="flex items-center justify-between px-5 py-3.5 bg-white/5 border border-white/10 rounded-xl hover:border-white/20 transition-all">
+            <div key={c.id} className="flex items-center justify-between px-5 py-3.5 bg-dark-900/40 border border-dark-800/30 rounded-xl hover:border-dark-700/50 transition-all">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#e85d75]/10 flex items-center justify-center flex-shrink-0">
-                  <Tag size={14} className="text-[#e85d75]" />
+                <div className="w-8 h-8 rounded-lg bg-brand-600/10 flex items-center justify-center flex-shrink-0">
+                  <Tag size={14} className="text-brand-400" />
                 </div>
                 <div>
                   <p className="font-500 text-sm text-white">{c.name}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <p className="text-[11px] text-white/30">{c.slug}</p>
                     {c.factories ? (
-                      <span className="flex items-center gap-1 text-[10px] text-white/40 bg-white/10 px-1.5 py-0.5 rounded-full">
+                      <span className="flex items-center gap-1 text-[10px] text-dark-400 bg-dark-700/40 px-1.5 py-0.5 rounded-full">
                         <Factory size={9} />
                         {c.factories.name}
                       </span>
                     ) : (
-                      <span className="text-[10px] text-white/25 bg-white/5 px-1.5 py-0.5 rounded-full">global</span>
+                      <span className="text-[10px] text-dark-500 bg-dark-800/40 px-1.5 py-0.5 rounded-full">global</span>
                     )}
                   </div>
                 </div>

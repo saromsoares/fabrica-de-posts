@@ -67,32 +67,32 @@ interface LojistaDashboardData {
 
 function DashboardSkeleton() {
   return (
-    <div className="animate-pulse space-y-8">
+    <div className="space-y-8">
       {/* Greeting skeleton */}
       <div className="flex items-center justify-between">
         <div className="space-y-2">
-          <div className="h-7 w-48 bg-dark-800/60 rounded-xl" />
-          <div className="h-4 w-32 bg-dark-800/40 rounded-lg" />
+          <div className="h-7 w-48 skeleton-shimmer" />
+          <div className="h-4 w-32 skeleton-shimmer" />
         </div>
-        <div className="h-7 w-20 bg-dark-800/40 rounded-full" />
+          <div className="h-7 w-20 skeleton-shimmer rounded-full" />
       </div>
 
       {/* Usage bar skeleton */}
       <div className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-5 space-y-3">
         <div className="flex justify-between">
-          <div className="h-4 w-24 bg-dark-800/60 rounded" />
-          <div className="h-6 w-16 bg-dark-800/40 rounded-full" />
+          <div className="h-4 w-24 skeleton-shimmer" />
+          <div className="h-6 w-16 skeleton-shimmer rounded-full" />
         </div>
-        <div className="h-8 w-32 bg-dark-800/60 rounded" />
-        <div className="h-2.5 w-full bg-dark-800/60 rounded-full" />
+        <div className="h-8 w-32 skeleton-shimmer" />
+        <div className="h-2.5 w-full skeleton-shimmer rounded-full" />
       </div>
 
       {/* Stats cards skeleton */}
       <div className="grid grid-cols-3 gap-4">
         {[0, 1, 2].map(i => (
           <div key={i} className="bg-dark-900/40 border border-dark-800/30 rounded-2xl p-4 space-y-2">
-            <div className="h-4 w-16 bg-dark-800/60 rounded" />
-            <div className="h-8 w-12 bg-dark-800/60 rounded" />
+            <div className="h-4 w-16 skeleton-shimmer" />
+            <div className="h-8 w-12 skeleton-shimmer" />
           </div>
         ))}
       </div>
@@ -399,11 +399,11 @@ export default function LojistaDashboard({ userName }: { userName: string }) {
                 className="flex items-center gap-4 p-3 bg-dark-900/40 border border-dark-800/30 rounded-xl hover:border-dark-700/50 transition-all"
               >
                 {/* Thumbnail */}
-                <div className="w-12 h-12 rounded-lg bg-white border border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-dark-800/60 border border-dark-700/40 overflow-hidden flex-shrink-0 flex items-center justify-center">
                   {gen.image_url ? (
-                    <img src={gen.image_url} alt={gen.product?.name ?? 'Post'} className="w-full h-full object-contain" />
+                    <img src={gen.image_url} alt={gen.product?.name ?? 'Post'} className="w-full h-full object-cover" />
                   ) : (
-                    <ImageIcon size={20} className="text-gray-400" />
+                    <ImageIcon size={18} className="text-dark-500" />
                   )}
                 </div>
 
@@ -418,7 +418,11 @@ export default function LojistaDashboard({ userName }: { userName: string }) {
                 </div>
 
                 {/* Format badge */}
-                <span className="text-[10px] font-700 uppercase tracking-wider text-dark-500 bg-dark-800/60 px-2 py-1 rounded-lg flex-shrink-0">
+                <span className={`text-[9px] font-800 uppercase tracking-wider px-2 py-1 rounded-lg flex-shrink-0 ${
+                  gen.format === 'story'
+                    ? 'bg-purple-600/15 text-purple-400 border border-purple-500/20'
+                    : 'bg-blue-600/15 text-blue-400 border border-blue-500/20'
+                }`}>
                   {gen.format}
                 </span>
               </div>

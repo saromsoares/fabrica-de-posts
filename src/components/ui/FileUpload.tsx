@@ -150,7 +150,7 @@ export function FileUpload({
       <div
         className={`
           relative border-2 border-dashed rounded-xl p-4 text-center transition-colors cursor-pointer
-          ${isDisabled ? 'opacity-50 cursor-not-allowed border-white/10' : 'border-white/20 hover:border-white/40'}
+          ${isDisabled ? 'opacity-50 cursor-not-allowed border-dark-700/30' : 'border-dark-700/50 hover:border-dark-600/70'}
           ${error ? 'border-red-500/50 bg-red-500/5' : ''}
           ${success ? 'border-green-500/50 bg-green-500/5' : ''}
         `}

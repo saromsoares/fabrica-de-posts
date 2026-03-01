@@ -488,16 +488,21 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
                   className="flex items-center gap-3 p-3 bg-dark-900/40 border border-dark-800/30 rounded-xl"
                 >
                   {/* Rank */}
-                  <span className="text-xs font-800 text-dark-600 w-4 text-center flex-shrink-0">
+                  <span className={`text-[10px] font-800 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    idx === 0 ? 'bg-amber-500/20 text-amber-400' :
+                    idx === 1 ? 'bg-dark-700/60 text-dark-300' :
+                    idx === 2 ? 'bg-orange-900/30 text-orange-400' :
+                    'text-dark-600'
+                  }`}>
                     {idx + 1}
                   </span>
 
                   {/* Thumbnail */}
-                  <div className="w-10 h-10 rounded-lg bg-white border border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-dark-800/60 border border-dark-700/40 overflow-hidden flex-shrink-0 flex items-center justify-center">
                     {product.image_url ? (
-                      <img src={product.image_url} alt={product.product_name} className="w-full h-full object-contain" />
+                      <img src={product.image_url} alt={product.product_name} className="w-full h-full object-cover" />
                     ) : (
-                      <ImageIcon size={16} className="text-gray-400" />
+                      <ImageIcon size={14} className="text-dark-500" />
                     )}
                   </div>
 
