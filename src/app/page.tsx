@@ -88,10 +88,11 @@ const FAQS = [
 
 type PlanRow = {
   plan_name: string;
+  display_name: string | null;
   price_brl: number;
-  max_factories: number;
+  max_factories_followed: number;
   monthly_copys: number;
-  monthly_images: number;
+  monthly_generations: number;
   template_level: string | null;
 };
 
@@ -106,8 +107,8 @@ function planDisplayName(name: string): string {
 }
 
 function planFeatures(plan: PlanRow): string[] {
-  const factories = plan.max_factories >= 999 ? 'Todas as fábricas' : `${plan.max_factories} fábrica${plan.max_factories !== 1 ? 's' : ''}`;
-  const images = plan.monthly_images >= 999 ? 'Artes ilimitadas' : `${plan.monthly_images} arte${plan.monthly_images !== 1 ? 's' : ''}/mês`;
+  const factories = plan.max_factories_followed >= 999999 ? 'Todas as fábricas' : `${plan.max_factories_followed} fábrica${plan.max_factories_followed !== 1 ? 's' : ''}`;
+  const images = plan.monthly_generations >= 999 ? 'Artes ilimitadas' : `${plan.monthly_generations} arte${plan.monthly_generations !== 1 ? 's' : ''}/mês`;
   const copys = plan.monthly_copys >= 999 ? 'Copys ilimitados' : `${plan.monthly_copys} copy${plan.monthly_copys !== 1 ? 's' : ''}/mês`;
   const level = plan.template_level ? `Templates ${plan.template_level}` : 'Templates básicos';
   return [factories, level, images, copys];
@@ -205,7 +206,7 @@ export default function LandingPage() {
       const supabase = createClient();
       const { data } = await supabase
         .from('plan_limits')
-        .select('plan_name, price_brl, max_factories, monthly_copys, monthly_images, template_level')
+        .select('plan_name, display_name, price_brl, max_factories_followed, monthly_copys, monthly_generations, template_level')
         .order('price_brl');
       if (data) setPlans(data as PlanRow[]);
 
@@ -323,7 +324,7 @@ export default function LandingPage() {
             Posts prontos para{' '}
             <span className="text-gradient-fire">redes sociais</span>
             <br />
-            <span style={{ color: '#444', fontSize: '0.65em' }}>sem designer, sem esforço.</span>
+            <span style={{ color: '#444', fontSize: '0.65em' }}>do produto ao post, em segundos.</span>
           </h1>
           <p className="text-lg text-gray-500 leading-relaxed max-w-xl mx-auto mb-10 font-light">
             Uma máquina inteligente que transforma catálogos de fabricantes em artes e textos profissionais. Escolha o produto, personalize com sua marca e publique direto na sua rede social.
@@ -595,7 +596,7 @@ export default function LandingPage() {
                 const superP = isSuperPremium(plan.plan_name);
                 const isCurrent = currentPlan === plan.plan_name;
                 const features = planFeatures(plan);
-                const displayName = planDisplayName(plan.plan_name);
+                const displayName = plan.display_name ?? planDisplayName(plan.plan_name);
                 const price = plan.price_brl === 0 ? 'R$ 0' : `R$ ${plan.price_brl.toFixed(2).replace('.', ',')}`;
                 const cta = plan.price_brl === 0 ? 'Começar grátis' : 'Escolher plano';
 
