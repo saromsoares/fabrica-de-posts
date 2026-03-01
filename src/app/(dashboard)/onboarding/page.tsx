@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { createClient } from '@/lib/supabase-browser';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Factory, Store, Check, ArrowRight, ArrowLeft,
   Loader2, Globe, Phone, FileText, Sparkles,
@@ -55,11 +55,29 @@ const VOICE_PREVIEW: Record<string, string> = {
 
 // ─── main page ────────────────────────────────────────────────
 
-export default function OnboardingPage() {
+// Wrapper com Suspense obrigatório para useSearchParams() no Next.js 15
+export default function OnboardingPageWrapper() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-6 h-6 animate-spin text-brand-400" />
+      </div>
+    }>
+      <OnboardingPage />
+    </Suspense>
+  );
+}
+
+function OnboardingPage() {
   const supabase = createClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Query param ?role=fabricante permite forçar o wizard correto
+  // Útil para admin/super_admin que clicam em "Criar Fábrica"
+  const forceRole = searchParams.get('role') as 'fabricante' | 'lojista' | null;
 
   useEffect(() => {
     let cancelled = false;
@@ -106,7 +124,7 @@ export default function OnboardingPage() {
           Vamos configurar sua conta
         </h1>
         <p className="text-dark-400 text-sm">
-          {profile.role === 'fabricante'
+          {(forceRole === 'fabricante' || profile.role === 'fabricante')
             ? 'Configure sua fábrica para começar a disponibilizar produtos.'
             : 'Configure sua loja e siga fábricas para criar posts.'}
         </p>
@@ -115,7 +133,7 @@ export default function OnboardingPage() {
       {/* Role badge */}
       <div className="flex justify-center mb-8">
         <div className="flex items-center gap-2 px-4 py-2 bg-dark-900/80 border border-dark-800/50 rounded-full">
-          {profile.role === 'fabricante' ? (
+          {(forceRole === 'fabricante' || profile.role === 'fabricante') ? (
             <>
               <Factory size={14} className="text-blue-400" />
               <span className="text-xs font-700 text-blue-400 uppercase tracking-wider">Fabricante</span>
@@ -129,7 +147,9 @@ export default function OnboardingPage() {
         </div>
       </div>
 
-      {profile.role === 'fabricante' ? (
+      {/* Usar forceRole se presente (ex: admin testando jornada de fabricante),
+           senão usar o role real do perfil */}
+      {(forceRole === 'fabricante' || profile.role === 'fabricante') ? (
         <FabricanteWizard supabase={supabase} router={router} userId={profile.id} />
       ) : (
         <LojistaWizard supabase={supabase} router={router} userId={profile.id} />

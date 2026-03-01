@@ -255,7 +255,7 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
             {dashboard.message ?? 'Crie sua fábrica para começar a disponibilizar produtos para os lojistas.'}
           </p>
           <Link
-            href="/onboarding"
+            href="/onboarding?role=fabricante"
             className="inline-flex items-center gap-2 px-6 py-3 bg-brand-600 text-white rounded-xl text-sm font-700 hover:bg-brand-700 transition-all"
           >
             <Factory size={16} /> Criar Fábrica
