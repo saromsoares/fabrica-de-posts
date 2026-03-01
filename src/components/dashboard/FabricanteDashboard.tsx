@@ -8,6 +8,7 @@ import {
   Check, X, Loader2, AlertCircle, ArrowRight,
   Image as ImageIcon, Sparkles, UserPlus, BarChart3,
 } from 'lucide-react';
+import LogoAvatar from '@/components/ui/LogoAvatar';
 
 /* ═══════════════════════════════════════
    TYPES
@@ -285,13 +286,7 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
       {/* Factory info */}
       {factory && (
         <div className="flex items-center gap-4 p-4 bg-dark-900/60 border border-dark-800/40 rounded-2xl">
-          <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center p-2 flex-shrink-0">
-            {factory.logo_url ? (
-              <img src={factory.logo_url} alt={factory.name} className="max-w-full max-h-full object-contain" />
-            ) : (
-              <Factory size={20} className="text-slate-300" />
-            )}
-          </div>
+          <LogoAvatar src={factory.logo_url} alt={factory.name} size="md" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-700 text-white truncate">{factory.name}</p>
             <p className="text-xs text-dark-400 mt-0.5">

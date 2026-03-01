@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import { Loader2, ArrowLeft, FolderOpen, Factory as FactoryIcon } from 'lucide-react';
+import LogoAvatar from '@/components/ui/LogoAvatar';
 import type { Factory, Category, Sector } from '@/types/database';
 
 type FactoryDetail = Factory & {
@@ -84,13 +85,7 @@ export default function FactoryCategoriesPage() {
 
         {/* Fábrica info */}
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-white rounded-full shadow-sm border border-gray-100 flex items-center justify-center overflow-hidden p-2 flex-shrink-0">
-            {factory.logo_url ? (
-              <img src={factory.logo_url} alt={factory.name} className="max-w-[80%] max-h-[80%] object-contain" />
-            ) : (
-              <FactoryIcon size={28} className="text-gray-400" />
-            )}
-          </div>
+          <LogoAvatar src={factory.logo_url} alt={factory.name} size="lg" />
           <div>
             <h1 className="text-2xl font-display font-800 tracking-tight">{factory.name}</h1>
             <div className="flex items-center gap-2 mt-1">

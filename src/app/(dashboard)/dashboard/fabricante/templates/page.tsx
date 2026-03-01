@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { Loader2, Plus, Pencil, Trash2, LayoutTemplate, X, Check, Upload, Image as ImageIcon, Eye } from 'lucide-react';
+import { validateTemplate } from '@/lib/validators/image-validator';
 import type { Template, Factory } from '@/types/database';
 
 export default function FabricanteTemplatesPage() {
@@ -69,19 +70,24 @@ export default function FabricanteTemplatesPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validação básica
-    const validTypes = ['image/png', 'image/jpeg'];
-    if (!validTypes.includes(file.type)) {
-      setError('Formato inválido. Use PNG ou JPEG.');
-      return;
-    }
     if (file.size > 15 * 1024 * 1024) {
       setError('Arquivo muito grande. Máximo 15MB.');
       return;
+    }
+
+    const validation = await validateTemplate(file);
+    if (!validation.valid) {
+      setError(validation.error!);
+      return;
+    }
+
+    // Auto-detectar formato pelo tamanho da imagem
+    if (validation.format) {
+      setFormFormat(validation.format);
     }
 
     setFormImageFile(file);
@@ -341,7 +347,7 @@ export default function FabricanteTemplatesPage() {
                 className="hidden"
               />
               <div className="text-xs text-dark-500">
-                <p>PNG ou JPEG, mín. 1080px</p>
+                <p>PNG ou JPEG, 1080x1080 (Feed) ou 1080x1920 (Story)</p>
                 <p>Máximo 15MB</p>
               </div>
             </div>

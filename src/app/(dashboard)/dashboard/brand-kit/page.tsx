@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { uploadImage } from '@/lib/upload';
+import { validateLogo } from '@/lib/validators/image-validator';
 import { useRouter } from 'next/navigation';
 import { Upload, Check, Palette } from 'lucide-react';
 import type { BrandKit } from '@/types/database';
@@ -40,9 +41,15 @@ export default function BrandKitPage() {
     return () => { cancelled = true; };
   }, [supabase]);
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [logoError, setLogoError] = useState<string | null>(null);
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 2 * 1024 * 1024) { setLogoError('Logo muito grande. Máximo: 2MB.'); return; }
+      const validation = await validateLogo(file);
+      if (!validation.valid) { setLogoError(validation.error!); return; }
+      setLogoError(null);
       setLogoFile(file);
       setLogoPreview(URL.createObjectURL(file));
     }
@@ -131,9 +138,10 @@ export default function BrandKitPage() {
             <div>
               <label className="inline-block px-4 py-2 bg-dark-800 hover:bg-dark-700 text-sm text-dark-200 rounded-xl cursor-pointer transition-all">
                 {logoPreview ? 'Trocar logo' : 'Subir logo'}
-                <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+                <input type="file" accept="image/png" className="hidden" onChange={handleLogoChange} />
               </label>
-              <p className="text-xs text-dark-500 mt-2">PNG, JPG ou SVG. Máx 2MB.</p>
+              <p className="text-xs text-dark-500 mt-2">PNG, quadrado, mínimo 500x500px. Máx 2MB.</p>
+              {logoError && <p className="text-xs text-red-400 mt-1">{logoError}</p>}
             </div>
           </div>
         </div>

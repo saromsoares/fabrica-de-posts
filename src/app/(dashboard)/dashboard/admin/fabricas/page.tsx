@@ -3,7 +3,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { uploadImage } from '@/lib/upload';
+import { validateLogo } from '@/lib/validators/image-validator';
 import { Plus, Pencil, Trash2, X, Upload, AlertCircle, Factory } from 'lucide-react';
+import LogoAvatar from '@/components/ui/LogoAvatar';
 import { extractError } from '@/lib/utils';
 import type { Factory as FactoryType } from '@/types/database';
 
@@ -42,13 +44,12 @@ export default function AdminFabricasPage() {
 
   const clearMessages = () => { setError(null); setSuccess(null); };
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) { setError('Logo muito grande. Máximo: 2MB.'); return; }
-      if (!['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'].includes(file.type)) {
-        setError('Formato inválido. Use PNG, JPG, WebP ou SVG.'); return;
-      }
+      const validation = await validateLogo(file);
+      if (!validation.valid) { setError(validation.error!); return; }
       setLogoFile(file);
       setLogoPreview(URL.createObjectURL(file));
       clearMessages();
@@ -190,9 +191,9 @@ export default function AdminFabricasPage() {
                 <div>
                   <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-dark-800 hover:bg-dark-700 rounded-xl cursor-pointer text-sm text-dark-300 transition-all">
                     <Upload size={16} /> {logoFile ? 'Trocar logo' : 'Subir logo'}
-                    <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={handleLogoChange} />
+                    <input type="file" accept="image/png" className="hidden" onChange={handleLogoChange} />
                   </label>
-                  <p className="text-[11px] text-dark-500 mt-1.5">PNG, JPG, WebP ou SVG. Máx 2MB.</p>
+                  <p className="text-[11px] text-dark-500 mt-1.5">PNG, quadrado, mínimo 500x500px. Máx 2MB.</p>
                 </div>
               </div>
             </div>
@@ -225,13 +226,7 @@ export default function AdminFabricasPage() {
           {factories.map((f) => (
             <div key={f.id} className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-5 hover:border-dark-700/60 transition-all">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-16 h-16 rounded-xl bg-dark-800 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {f.logo_url ? (
-                    <img src={f.logo_url} alt={f.name} className="w-full h-full object-contain p-2" />
-                  ) : (
-                    <Factory size={24} className="text-dark-500" />
-                  )}
-                </div>
+                <LogoAvatar src={f.logo_url} alt={f.name} size="lg" />
                 <div className="flex-1 min-w-0">
                   <h3 className="font-display font-700 truncate">{f.name}</h3>
                   <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-[11px] font-500 ${f.active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-dark-700 text-dark-400'}`}>

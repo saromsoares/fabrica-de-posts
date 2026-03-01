@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
-import { Loader2, ArrowLeft, Package, Factory as FactoryIcon } from 'lucide-react';
+import { Loader2, ArrowLeft, Package } from 'lucide-react';
+import ProductCard from '@/components/product/ProductCard';
+import LogoAvatar from '@/components/ui/LogoAvatar';
 import type { Product, Category, Factory } from '@/types/database';
 
 type CategoryDetail = Category & {
@@ -22,7 +24,6 @@ export default function CategoryProductsPage() {
 
   useEffect(() => {
     (async () => {
-      // Buscar categoria com fábrica
       const { data: catData } = await supabase
         .from('categories')
         .select('id, name, slug, factory_id, factories(id, name, logo_url)')
@@ -31,7 +32,6 @@ export default function CategoryProductsPage() {
 
       if (catData) setCategory(catData as unknown as CategoryDetail);
 
-      // Buscar produtos da categoria
       const { data: productsData } = await supabase
         .from('products')
         .select('id, name, description, image_url, active, tags')
@@ -77,11 +77,11 @@ export default function CategoryProductsPage() {
         )}
 
         <div className="flex items-center gap-4">
-          {category.factories?.logo_url && (
-            <div className="w-12 h-12 bg-white rounded-full shadow-sm border border-gray-100 flex items-center justify-center overflow-hidden p-1.5 flex-shrink-0">
-              <img src={category.factories.logo_url} alt="" className="max-w-[80%] max-h-[80%] object-contain" />
-            </div>
-          )}
+          <LogoAvatar
+            src={category.factories?.logo_url}
+            alt={category.factories?.name || 'Fábrica'}
+            size="md"
+          />
           <div>
             <h1 className="text-2xl font-display font-800 tracking-tight">{category.name}</h1>
             <p className="text-dark-400 mt-0.5">
@@ -101,37 +101,20 @@ export default function CategoryProductsPage() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {products.map((product) => (
-            <div
+            <ProductCard
               key={product.id}
-              className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden group"
-            >
-              {/* Imagem do produto — fundo branco obrigatório */}
-              <div className="aspect-square bg-white p-4 flex items-center justify-center">
-                {product.image_url ? (
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="max-w-[80%] max-h-[80%] object-contain"
-                  />
-                ) : (
-                  <Package size={48} className="text-gray-300" />
-                )}
-              </div>
-
-              {/* Info */}
-              <div className="p-4 border-t border-gray-50">
-                <h3 className="font-semibold text-gray-900 text-sm truncate">{product.name}</h3>
-                {product.description && (
-                  <p className="text-xs text-gray-500 line-clamp-2 mt-1">{product.description}</p>
-                )}
+              name={product.name}
+              imageUrl={product.image_url}
+              category={category.name}
+              action={
                 <Link
                   href={`/dashboard/estudio/${product.id}`}
-                  className="mt-3 w-full bg-brand-600 hover:bg-brand-700 text-white rounded-lg py-2 text-sm font-medium flex items-center justify-center gap-1.5 transition-colors"
+                  className="w-full bg-brand-600 hover:bg-brand-700 text-white rounded-lg py-2 text-sm font-medium flex items-center justify-center gap-1.5 transition-colors"
                 >
                   Criar Post
                 </Link>
-              </div>
-            </div>
+              }
+            />
           ))}
         </div>
       )}

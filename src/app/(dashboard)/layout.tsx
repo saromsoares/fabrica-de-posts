@@ -13,6 +13,7 @@ import {
 import type { Profile } from '@/types/database';
 import { isAdminRole, isFabricanteRole } from '@/lib/role-helpers';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import LogoAvatar from '@/components/ui/LogoAvatar';
 
 type NavItem = {
   href: string;
@@ -113,13 +114,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {profile && (
           <div className="px-6 py-6 border-b border-dark-800/40">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-dark-800 border border-dark-700 flex items-center justify-center overflow-hidden">
-                {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <User size={20} className="text-dark-400" />
-                )}
-              </div>
+              <LogoAvatar src={profile.avatar_url} alt={profile.full_name || 'Usuário'} size="md" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-700 truncate">{profile.full_name || 'Usuário'}</p>
                 <div className="flex items-center gap-1.5 mt-0.5">
