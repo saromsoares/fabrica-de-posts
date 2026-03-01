@@ -21,9 +21,14 @@ export type Profile = {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
-  role: 'lojista' | 'fabricante' | 'admin';
+  role: 'lojista' | 'fabricante' | 'admin' | 'super_admin';
   plan: 'free' | 'loja' | 'pro';
+  is_super_admin: boolean;
   onboarding_complete: boolean | null;
+  store_type: string | null;
+  location_city: string | null;
+  location_state: string | null;
+  store_voice: string | null;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -51,6 +56,10 @@ export type Factory = {
   description: string | null;
   website: string | null;
   whatsapp: string | null;
+  niche: string | null;
+  brand_differentials: string | null;
+  brand_voice: string | null;
+  target_audience: string | null;
   active: boolean | null;
   created_at: string | null;
 };
@@ -71,6 +80,8 @@ export type Product = {
   factory_id: string | null;
   image_url: string | null;
   tags: string[] | null;
+  main_benefit: string | null;
+  technical_specs: string | null;
   active: boolean | null;
   created_at: string | null;
   updated_at: string | null;
