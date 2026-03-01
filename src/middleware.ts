@@ -49,6 +49,20 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Proteger rotas fabricante: só role='fabricante', 'admin' ou 'super_admin' acessa
+  if (user && path.startsWith('/dashboard/fabricante')) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, is_super_admin')
+      .eq('id', user.id)
+      .single();
+
+    const hasFabricanteAccess = profile?.role === 'fabricante' || profile?.role === 'admin' || profile?.role === 'super_admin' || profile?.is_super_admin === true;
+    if (!hasFabricanteAccess) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+  }
+
   // Onboarding: redirecionar para /onboarding se não completou
   // Permitir acesso a: /onboarding, /dashboard/brand-kit, /dashboard/admin, /dashboard/conta
   if (user && path.startsWith('/dashboard') && !path.startsWith('/dashboard/brand-kit') && !path.startsWith('/dashboard/admin') && !path.startsWith('/dashboard/conta')) {

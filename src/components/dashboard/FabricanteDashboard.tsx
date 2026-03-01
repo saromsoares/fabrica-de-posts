@@ -419,7 +419,7 @@ export default function FabricanteDashboard({ userName }: { userName: string }) 
       {/* Quick actions */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link
-          href="/dashboard/admin/produtos"
+          href="/dashboard/fabricante/produtos"
           className="flex items-center gap-4 p-4 bg-dark-900/60 border border-dark-800/40 rounded-2xl hover:border-blue-500/30 transition-all group"
         >
           <div className="p-3 rounded-xl bg-blue-600/15">

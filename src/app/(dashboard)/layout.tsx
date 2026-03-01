@@ -34,9 +34,9 @@ const lojistaNav: NavItem[] = [
 // Navegação do FABRICANTE
 const fabricanteNav: NavItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
-  { href: '/dashboard/fabricante/categorias', icon: FolderOpen, label: 'Categorias', exact: true },
+  { href: '/dashboard/fabricante/produtos', icon: Package, label: 'Produtos', exact: false },
+  { href: '/dashboard/fabricante/categorias', icon: FolderOpen, label: 'Categorias', exact: false },
   { href: '/dashboard/fabricante/templates', icon: LayoutTemplate, label: 'Templates', exact: true },
-  { href: '/dashboard/produtos', icon: Package, label: 'Produtos', exact: false },
   { href: '/dashboard/fabricante/perfil', icon: Settings, label: 'Perfil da Fábrica', exact: true },
   { href: '/dashboard/conta', icon: User, label: 'Conta', exact: true },
 ];
@@ -87,6 +87,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (item.exact) return pathname === item.href;
     return pathname.startsWith(item.href) || 
       (item.href === '/dashboard/produtos' && pathname.startsWith('/dashboard/estudio')) ||
+      (item.href === '/dashboard/fabricante/produtos' && pathname.startsWith('/dashboard/estudio')) ||
       (item.href === '/dashboard/setores' && (
         pathname.startsWith('/dashboard/fabricas') || 
         pathname.startsWith('/dashboard/categorias')
