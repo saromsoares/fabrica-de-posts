@@ -167,7 +167,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Sparkles size={16} className="text-white" />
               </div>
               <span className="font-display font-800 text-[15px] tracking-tight">
-                Fábrica de <span className="text-brand-400">Posts</span>
+                Criativo <span className="text-brand-400">Pronto</span>
               </span>
             </Link>
             <button
@@ -339,7 +339,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <Sparkles size={13} className="text-white" />
                 </div>
                 <span className="font-display font-800 text-sm tracking-tight">
-                  Fábrica de <span className="text-brand-400">Posts</span>
+                  Criativo <span className="text-brand-400">Pronto</span>
                 </span>
               </div>
             </div>

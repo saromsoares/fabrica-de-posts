@@ -10,7 +10,7 @@ const STATS = [
   { number: '3s', label: 'Tempo médio', desc: 'para gerar arte + copy profissional' },
   { number: '85%', label: 'Economia', desc: 'comparado a contratar um designer' },
   { number: '0', label: 'Conhecimento técnico', desc: 'necessário para criar conteúdo' },
-  { number: '24/7', label: 'Disponível', desc: 'sua fábrica de conteúdo nunca para' },
+  { number: '24/7', label: 'Disponível', desc: 'sua produção de conteúdo nunca para' },
 ];
 
 const TESTIMONIALS = [
@@ -52,12 +52,12 @@ const PARTNER_LOGOS = [
 const FEATURES_LOJISTA = [
   { icon: '⚡', title: 'Geração Inteligente', sub: 'ARTE + COPY EM SEGUNDOS', desc: 'Escolha um produto do catálogo e receba arte profissional + texto pronto para publicar. Sem Photoshop, sem Canva, sem esforço.', color: '#ff6b35' },
   { icon: '🎨', title: 'Templates Prontos', sub: 'COMPOSIÇÃO AUTOMÁTICA', desc: 'Seu produto e logo são posicionados automaticamente no template. Resultado profissional que parece feito por uma agência de marketing.', color: '#a855f7' },
-  { icon: '🏪', title: 'Sua Marca, Seu Conteúdo', sub: 'BRAND KIT PERSONALIZADO', desc: 'Configure suas cores, logo, contato uma vez. Todo conteúdo gerado sai com a cara da sua loja.', color: '#06b6d4' },
+  { icon: '🏪', title: 'Sua Marca, Seu Conteúdo', sub: 'BRAND KIT PERSONALIZADO', desc: 'Configure suas cores, logo, Instagram e WhatsApp uma vez. Todo conteúdo gerado sai com a cara da sua loja.', color: '#06b6d4' },
   { icon: '📱', title: 'Direto pra Rede Social', sub: 'PUBLIQUE EM 1 CLIQUE', desc: 'Arte pronta no formato certo (Feed ou Story) + copy com hashtags e call-to-action. É só copiar e postar.', color: '#22c55e' },
 ];
 
 const PAIN_POINTS = [
-  { pain: 'Seus lojistas divulgam seus produtos com fotos ruins e textos amadores?', solution: 'Na Fábrica de Posts, eles geram conteúdo profissional com templates que VOCÊ controla.' },
+  { pain: 'Seus lojistas divulgam seus produtos com fotos ruins e textos amadores?', solution: 'No Criativo Pronto, eles geram conteúdo profissional com templates que VOCÊ controla.' },
   { pain: 'Você gasta com catálogos e material de PDV que o lojista nem usa?', solution: 'Aqui o material é digital, sempre atualizado, e o lojista USA porque é fácil.' },
   { pain: 'Não sabe se seus produtos estão sendo divulgados nos pontos de venda?', solution: 'Acompanhe em tempo real quais produtos e lojistas geram mais conteúdo.' },
 ];
@@ -128,7 +128,7 @@ function StarRating({ count }: { count: number }) {
 
 function SectionTag({ text }: { text: string }) {
   return (
-    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#ff6b35', letterSpacing: '0.15em', marginBottom: 16, textTransform: 'uppercase' }}>
+    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#ff6b35', letterSpacing: '0.15em', marginBottom: 16, textTransform: 'uppercase' }}>
       <span>{'// '}{text}</span>
     </div>
   );
@@ -156,7 +156,7 @@ function FeatCard({
         <div>
           <div className="text-base font-bold mb-1">{f.title}</div>
           <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: '0.15em', color: f.color, marginBottom: 10 }}>{f.sub}</div>
-          <div className="text-sm leading-relaxed" style={{ color: '#666' }}>{f.desc}</div>
+          <div className="text-sm leading-relaxed" style={{ color: '#777' }}>{f.desc}</div>
         </div>
       </div>
     </div>
@@ -178,7 +178,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
         <span className="text-gray-600 ml-4 flex-shrink-0 transition-transform" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
       </button>
       {open && (
-        <div className="px-6 pb-6 text-sm leading-relaxed" style={{ color: '#666' }}>{a}</div>
+        <div className="px-6 pb-6 text-sm leading-relaxed" style={{ color: '#777' }}>{a}</div>
       )}
     </div>
   );
@@ -233,12 +233,13 @@ export default function LandingPage() {
     >
       {/* Fontes + animações globais */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Sora:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Sora:wght@300;400;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
         .font-sora { font-family: 'Sora', sans-serif; }
         .font-mono-jb { font-family: 'JetBrains Mono', monospace; }
         @keyframes float { 0% { transform: translateY(0) scale(1); } 100% { transform: translateY(-40px) scale(1.1); } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(60px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 20px rgba(255,107,53,0.3); } 50% { box-shadow: 0 0 50px rgba(255,107,53,0.6); } }
+        @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 20px rgba(255,120,50,0.3); } 50% { box-shadow: 0 0 40px rgba(255,120,50,0.6); } }
+        @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(100vh); } }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         @keyframes gearSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -249,6 +250,8 @@ export default function LandingPage() {
         .anim-gear { animation: gearSpin 4s linear infinite; display: inline-block; }
         .text-gradient-fire { background: linear-gradient(135deg, #ff6b35, #ff8c42, #ffd700); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
         .glass { background: rgba(255,255,255,0.025); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.05); }
+        .hover-lift { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .hover-lift:hover { transform: translateY(-4px); box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: #06060a; }
         ::-webkit-scrollbar-thumb { background: #ff6b35; border-radius: 3px; }
@@ -267,8 +270,8 @@ export default function LandingPage() {
       </div>
 
       {/* Orbs de fundo */}
-      <div className="fixed pointer-events-none" style={{ top: '-10%', left: '55%', width: 600, height: 600, borderRadius: '50%', background: '#ff6b35', filter: 'blur(120px)', opacity: 0.08, animation: 'float 8s ease-in-out infinite alternate' }} />
-      <div className="fixed pointer-events-none" style={{ top: '60%', left: '-5%', width: 400, height: 400, borderRadius: '50%', background: '#7c3aed', filter: 'blur(120px)', opacity: 0.08, animation: 'float 10s ease-in-out infinite alternate', animationDelay: '2s' }} />
+      <div className="fixed pointer-events-none" style={{ top: '-10%', left: '55%', width: 600, height: 600, borderRadius: '50%', background: '#ff6b35', filter: 'blur(120px)', opacity: 0.12, animation: 'float 8s ease-in-out infinite alternate' }} />
+      <div className="fixed pointer-events-none" style={{ top: '60%', left: '-5%', width: 400, height: 400, borderRadius: '50%', background: '#7c3aed', filter: 'blur(120px)', opacity: 0.12, animation: 'float 10s ease-in-out infinite alternate', animationDelay: '2s' }} />
 
       {/* ═══ NAVBAR ═══════════════════════════════════════════════════════════ */}
       <nav
@@ -284,7 +287,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style={{ background: 'linear-gradient(135deg, #ff6b35, #ff8c42)' }}>⚡</div>
             <span className="font-sora font-extrabold text-lg">
-              <span style={{ color: '#ff6b35' }}>Fábrica</span> de Posts
+              <span style={{ color: '#ff6b35' }}>Criativo</span> Pronto
             </span>
           </div>
           <div className="hidden md:flex items-center gap-7 text-sm font-medium">
@@ -309,6 +312,10 @@ export default function LandingPage() {
 
       {/* ═══ HERO ═════════════════════════════════════════════════════════════ */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+        {/* Scanline effect */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-[0.03]">
+          <div className="w-full h-0.5" style={{ background: 'linear-gradient(90deg, transparent, #ff6b35, transparent)', animation: 'scanline 5s linear infinite' }} />
+        </div>
         <div className="relative z-10 text-center max-w-4xl px-6 anim-slide-up">
           <div
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-8 font-mono-jb text-xs tracking-wider"
@@ -324,7 +331,7 @@ export default function LandingPage() {
             Posts prontos para{' '}
             <span className="text-gradient-fire">redes sociais</span>
             <br />
-            <span style={{ color: '#444', fontSize: '0.65em' }}>do produto ao post, em segundos.</span>
+            <span style={{ color: '#555', fontSize: '0.65em' }}>sem designer, sem esforço.</span>
           </h1>
           <p className="text-lg text-gray-500 leading-relaxed max-w-xl mx-auto mb-10 font-light">
             Uma máquina inteligente que transforma catálogos de fabricantes em artes e textos profissionais. Escolha o produto, personalize com sua marca e publique direto na sua rede social.
@@ -443,7 +450,7 @@ export default function LandingPage() {
             </div>
             <div className="flex flex-col gap-4 mb-16">
               {PAIN_POINTS.map((p, i) => (
-                <div key={i} className="p-7 rounded-2xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div key={i} className="p-7 rounded-2xl hover-lift" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <div className="grid grid-cols-1 md:grid-cols-[1fr_40px_1fr] gap-5 items-center">
                     <div>
                       <div className="font-mono-jb text-[11px] text-red-400 tracking-widest mb-2">❌ O PROBLEMA</div>
@@ -517,7 +524,7 @@ export default function LandingPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {TESTIMONIALS.map((t, i) => (
-              <div key={i} className="glass rounded-2xl p-8 transition-all hover:-translate-y-1">
+              <div key={i} className="glass hover-lift rounded-2xl p-8">
                 <StarRating count={t.rating} />
                 <p className="text-sm text-gray-400 leading-relaxed mt-4 mb-5 italic">&ldquo;{t.text}&rdquo;</p>
                 <div className="flex items-center gap-3">
@@ -578,9 +585,9 @@ export default function LandingPage() {
       <section id="planos" className="relative px-6 py-24" style={{ background: 'rgba(255,255,255,0.008)', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center mb-16">
-            <SectionTag text="PLANOS DE PRODUÇÃO" />
+            <SectionTag text="PLANOS" />
             <h2 className="font-sora font-extrabold tracking-tight" style={{ fontSize: 'clamp(28px, 4vw, 46px)', letterSpacing: -1 }}>
-              Escale sua <span className="text-gradient-fire">fábrica de conteúdo</span>
+              Escale sua <span className="text-gradient-fire">produção de conteúdo</span>
             </h2>
             <p className="text-gray-600 text-sm mt-3">Planos para lojistas. Fabricantes cadastram gratuitamente.</p>
           </div>
@@ -704,21 +711,26 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ FOOTER ═══════════════════════════════════════════════════════════ */}
-      <footer style={{ borderTop: '1px solid rgba(255,255,255,0.04)', padding: '36px 24px' }}>
+      <footer style={{ borderTop: '1px solid rgba(255,255,255,0.04)', padding: '36px 24px 24px' }}>
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-5">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
             <div className="flex items-center gap-2">
               <span style={{ color: '#ff6b35', fontWeight: 800 }}>⚡</span>
-              <span className="font-sora font-bold text-sm text-gray-600">Fábrica de Posts © {new Date().getFullYear()}</span>
+              <span className="font-sora font-bold text-sm text-gray-500">Criativo Pronto © {new Date().getFullYear()}</span>
             </div>
             <div className="flex gap-6 text-xs">
               <Link href="/termos" className="text-gray-600 hover:text-gray-400 transition-colors">Termos de Serviço</Link>
               <Link href="/privacidade" className="text-gray-600 hover:text-gray-400 transition-colors">Política de Privacidade</Link>
-              <a href="mailto:contato@fabricadeposts.com.br" className="text-gray-600 hover:text-gray-400 transition-colors">Contato</a>
+              <a href="mailto:contato@criativopronto.com.br" className="text-gray-600 hover:text-gray-400 transition-colors">Contato</a>
             </div>
           </div>
-          <div className="font-mono-jb text-[10px] text-gray-800 text-center">
-            TECNOLOGIA PROPRIETÁRIA • CONTEÚDO INTELIGENTE • FEITO NO BRASIL 🇧🇷
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+            <div className="font-mono-jb text-[10px] text-gray-800">
+              LB SERVIÇOS DIGITAIS E ENTRETENIMENTO LTDA • CNPJ 53.664.749/0001-08
+            </div>
+            <div className="font-mono-jb text-[10px] text-gray-800">
+              TECNOLOGIA PROPRIETÁRIA • FEITO NO BRASIL 🇧🇷
+            </div>
           </div>
         </div>
       </footer>

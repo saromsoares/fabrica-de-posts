@@ -184,7 +184,7 @@ export default async function PlanosPage() {
       <nav className="fixed top-0 w-full z-50 bg-dark-950/80 backdrop-blur-xl border-b border-dark-800/40">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="font-display font-700 text-lg hover:opacity-80 transition-opacity">
-            Fábrica de <span className="text-brand-400">Posts</span>
+            Criativo <span className="text-brand-400">Pronto</span>
           </Link>
           <div className="flex items-center gap-4">
             <Link href="/#como-funciona" className="hidden md:block text-sm text-dark-300 hover:text-white transition-colors">
@@ -376,7 +376,7 @@ export default async function PlanosPage() {
       {/* Footer */}
       <footer className="border-t border-dark-800/40 py-8 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-dark-500">
-          <span>© 2026 Fábrica de Posts. Todos os direitos reservados.</span>
+          <span>© 2026 Criativo Pronto. Todos os direitos reservados.</span>
           <div className="flex items-center gap-6">
             <Link href="/" className="hover:text-dark-300 transition-colors">Início</Link>
             <Link href="/#como-funciona" className="hover:text-dark-300 transition-colors">Como funciona</Link>

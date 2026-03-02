@@ -1197,7 +1197,7 @@ export default function EstudioPage() {
         <p className="text-xs text-dark-600 mt-2">
           {generationMode === 'visual'
             ? 'Preview instantâneo — você personaliza e exporta a arte localmente.'
-            : 'GPT-4o + DALL-E 3 — a IA gera imagem e legenda com base no template escolhido.'}
+            : 'IA avançada — gera imagem e legenda profissional com base no template escolhido.'}
         </p>
       </div>
 

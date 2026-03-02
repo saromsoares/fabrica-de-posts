@@ -284,7 +284,7 @@ export default function LojistaDashboard({ userName }: { userName: string }) {
             <Store className="text-brand-400" size={24} />
             {userName ? `Olá, ${userName}!` : 'Dashboard'}
           </h1>
-          <p className="text-dark-400 text-sm mt-1">Visão geral da sua fábrica de posts</p>
+          <p className="text-dark-400 text-sm mt-1">Visão geral das suas criações</p>
         </div>
         <div className="flex items-center gap-3">
           <button

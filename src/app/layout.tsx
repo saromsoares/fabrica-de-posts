@@ -1,49 +1,49 @@
 import type { Metadata } from 'next';
 import './globals.css';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://fabricadeposts.com';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://criativopronto.com.br';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Fábrica de Posts — Do produto ao post, em segundos',
-    template: '%s | Fábrica de Posts',
+    default: 'Criativo Pronto — Posts prontos para redes sociais',
+    template: '%s | Criativo Pronto',
   },
   description:
-    'Plataforma que transforma produtos em posts prontos para redes sociais. Escolha o produto, aplique sua marca e baixe artes profissionais para Feed e Story em minutos.',
+    'Transforme catálogos de fabricantes em artes e textos profissionais. Sem designer, sem esforço.',
   keywords: [
     'posts para redes sociais',
     'artes automáticas',
     'marketing para lojistas',
     'gerador de posts',
     'templates para Instagram',
-    'fábrica de conteúdo',
+    'produção de conteúdo',
     'SaaS criativo',
   ],
-  authors: [{ name: 'Fábrica de Posts' }],
-  creator: 'Fábrica de Posts',
+  authors: [{ name: 'Criativo Pronto' }],
+  creator: 'Criativo Pronto',
   openGraph: {
     type: 'website',
     locale: 'pt_BR',
     url: siteUrl,
-    siteName: 'Fábrica de Posts',
-    title: 'Fábrica de Posts — Do produto ao post, em segundos',
+    siteName: 'Criativo Pronto',
+    title: 'Criativo Pronto — Posts prontos para redes sociais',
     description:
-      'Plataforma que transforma produtos em posts prontos para redes sociais. Escolha o produto, aplique sua marca e baixe artes profissionais.',
+      'Transforme catálogos de fabricantes em artes e textos profissionais. Sem designer, sem esforço.',
     images: [
       {
         url: `${siteUrl}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: 'Fábrica de Posts — Artes profissionais em minutos',
+        alt: 'Criativo Pronto — Artes profissionais em minutos',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Fábrica de Posts — Do produto ao post, em segundos',
+    title: 'Criativo Pronto — Posts prontos para redes sociais',
     description:
-      'Plataforma que transforma produtos em posts prontos para redes sociais.',
+      'Transforme catálogos de fabricantes em artes e textos profissionais.',
     images: [`${siteUrl}/og-image.png`],
   },
   robots: {

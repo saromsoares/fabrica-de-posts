@@ -2,8 +2,8 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Termos de Serviço — Fábrica de Posts',
-  description: 'Leia os Termos de Serviço da plataforma Fábrica de Posts.',
+  title: 'Termos de Serviço — Criativo Pronto',
+  description: 'Leia os Termos de Serviço da plataforma Criativo Pronto.',
 };
 
 export default function TermosPage() {
@@ -12,7 +12,7 @@ export default function TermosPage() {
       <nav className="border-b border-white/5 px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <Link href="/" className="font-bold text-white">
-            ⚡ <span style={{ color: '#ff6b35' }}>Fábrica</span> de Posts
+            ⚡ <span style={{ color: '#ff6b35' }}>Criativo</span> Pronto
           </Link>
           <Link href="/" className="text-sm text-gray-500 hover:text-white transition-colors">← Voltar</Link>
         </div>
@@ -24,30 +24,32 @@ export default function TermosPage() {
 
         <div className="space-y-10 text-sm leading-relaxed">
           <section>
-            <h2 className="text-lg font-semibold text-white mb-3">1. Aceitação dos Termos</h2>
-            <p>Ao acessar ou utilizar a plataforma Fábrica de Posts, você concorda com estes Termos de Serviço. Se não concordar com qualquer parte destes termos, não utilize a plataforma.</p>
+            <h2 className="text-lg font-semibold text-white mb-3">1. Identificação</h2>
+            <p>Criativo Pronto é uma plataforma operada por:<br />
+            <strong className="text-white">LB Serviços Digitais e Entretenimento Ltda</strong><br />
+            CNPJ: 53.664.749/0001-08<br />
+            Contato: <a href="mailto:contato@criativopronto.com.br" className="text-orange-400 hover:text-orange-300">contato@criativopronto.com.br</a></p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white mb-3">2. Descrição do Serviço</h2>
-            <p>A Fábrica de Posts é uma plataforma SaaS que permite a lojistas e revendedores gerar artes e textos profissionais para redes sociais, utilizando catálogos de produtos fornecidos por fabricantes parceiros. O serviço é disponibilizado mediante assinatura de planos mensais, com opção de plano gratuito com funcionalidades limitadas.</p>
+            <h2 className="text-lg font-semibold text-white mb-3">2. Aceitação dos Termos</h2>
+            <p>Ao acessar ou utilizar a plataforma Criativo Pronto, você concorda com estes Termos de Serviço. Se não concordar com qualquer parte destes termos, não utilize a plataforma.</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white mb-3">3. Cadastro e Conta</h2>
+            <h2 className="text-lg font-semibold text-white mb-3">3. Descrição do Serviço</h2>
+            <p>A Criativo Pronto é uma plataforma SaaS que permite a lojistas e revendedores gerar artes e textos profissionais para redes sociais, utilizando catálogos de produtos fornecidos por fabricantes parceiros. O serviço é disponibilizado mediante assinatura de planos mensais, com opção de plano gratuito com funcionalidades limitadas.</p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-white mb-3">4. Cadastro e Responsabilidade do Usuário</h2>
             <p className="mb-2">Para utilizar a plataforma, você deve criar uma conta fornecendo informações verdadeiras e atualizadas. Você é responsável por manter a confidencialidade de suas credenciais de acesso e por todas as atividades realizadas em sua conta.</p>
             <p>Reservamo-nos o direito de encerrar contas que violem estes termos ou que apresentem atividades suspeitas.</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white mb-3">4. Planos e Pagamentos</h2>
-            <p className="mb-2">Os planos pagos são cobrados mensalmente. O cancelamento pode ser realizado a qualquer momento, sem multa ou fidelidade, e o acesso continua disponível até o fim do período já pago.</p>
-            <p>Os preços podem ser alterados com aviso prévio de 30 dias. Não realizamos reembolsos por períodos parcialmente utilizados, salvo em casos previstos pelo Código de Defesa do Consumidor.</p>
-          </section>
-
-          <section>
             <h2 className="text-lg font-semibold text-white mb-3">5. Propriedade Intelectual</h2>
-            <p className="mb-2">O conteúdo gerado pela plataforma (artes e textos) pode ser utilizado livremente pelo usuário para fins comerciais em suas redes sociais. Os templates e a tecnologia da plataforma são de propriedade exclusiva da Fábrica de Posts.</p>
+            <p className="mb-2">O conteúdo gerado pela plataforma (artes e textos) pode ser utilizado livremente pelo usuário para fins comerciais em suas redes sociais. Os templates, a tecnologia e a propriedade intelectual da plataforma são de titularidade exclusiva da LB Serviços Digitais e Entretenimento Ltda.</p>
             <p>Ao cadastrar imagens e logotipos, você declara possuir os direitos necessários sobre esses materiais e nos concede licença para processá-los dentro da plataforma.</p>
           </section>
 
@@ -57,23 +59,35 @@ export default function TermosPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white mb-3">7. Limitação de Responsabilidade</h2>
-            <p>A plataforma é fornecida &ldquo;como está&rdquo;. Não garantimos disponibilidade ininterrupta do serviço. Nossa responsabilidade é limitada ao valor pago pelo usuário nos últimos 30 dias.</p>
+            <h2 className="text-lg font-semibold text-white mb-3">7. Planos, Pagamentos e Cancelamento</h2>
+            <p className="mb-2">Os planos pagos são cobrados mensalmente. O cancelamento pode ser realizado a qualquer momento, sem multa ou fidelidade, e o acesso continua disponível até o fim do período já pago.</p>
+            <p>Os preços podem ser alterados com aviso prévio de 30 dias. Não realizamos reembolsos por períodos parcialmente utilizados, salvo em casos previstos pelo Código de Defesa do Consumidor.</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white mb-3">8. Alterações nos Termos</h2>
+            <h2 className="text-lg font-semibold text-white mb-3">8. Limitação de Responsabilidade</h2>
+            <p>A plataforma é fornecida &ldquo;como está&rdquo;. Não garantimos disponibilidade ininterrupta do serviço. Nossa responsabilidade é limitada ao valor pago pelo usuário nos últimos 30 dias. Não nos responsabilizamos por danos indiretos, incidentais ou consequenciais decorrentes do uso da plataforma.</p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-white mb-3">9. Alterações nos Termos</h2>
             <p>Podemos atualizar estes termos periodicamente. Notificaremos os usuários sobre mudanças significativas por e-mail ou notificação na plataforma. O uso continuado após as alterações implica na aceitação dos novos termos.</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white mb-3">9. Contato</h2>
-            <p>Para dúvidas sobre estes termos, entre em contato: <a href="mailto:contato@fabricadeposts.com.br" className="text-orange-400 hover:text-orange-300">contato@fabricadeposts.com.br</a></p>
+            <h2 className="text-lg font-semibold text-white mb-3">10. Foro</h2>
+            <p>Fica eleito o foro da comarca de São Paulo/SP para dirimir quaisquer questões oriundas destes Termos de Serviço, com renúncia expressa a qualquer outro, por mais privilegiado que seja.</p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-white mb-3">11. Contato</h2>
+            <p>Para dúvidas sobre estes termos, entre em contato: <a href="mailto:contato@criativopronto.com.br" className="text-orange-400 hover:text-orange-300">contato@criativopronto.com.br</a></p>
           </section>
         </div>
       </main>
 
       <footer className="border-t border-white/5 px-6 py-6 text-center text-xs text-gray-700">
+        <span className="mr-4">LB Serviços Digitais e Entretenimento Ltda — CNPJ 53.664.749/0001-08</span>
         <Link href="/privacidade" className="hover:text-gray-500 transition-colors mr-6">Política de Privacidade</Link>
         <Link href="/" className="hover:text-gray-500 transition-colors">Voltar ao início</Link>
       </footer>
