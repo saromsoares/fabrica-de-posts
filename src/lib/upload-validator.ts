@@ -1,7 +1,7 @@
 // ============================================================
 // Validador de upload client-side
 // Regras buscadas da Edge Function (fonte única) com fallback local
-// DEVE ser idêntico às regras da Edge Function validate-upload v4
+// DEVE ser idêntico às regras da Edge Function validate-upload v8
 // ============================================================
 
 export type UploadType = 'logo' | 'product' | 'template' | 'brand-logo';
@@ -37,38 +37,45 @@ export interface ValidationResult {
 }
 
 // ============================================================
-// FALLBACK — DEVE SER IDÊNTICO À EDGE FUNCTION validate-upload v4
+// Texto padrão de upload — exibir abaixo de TODOS os campos de upload
+// Atualizado para v8: PNG ou JPEG, 500×500px, 6MB, quadrado
+// ============================================================
+export const UPLOAD_HINT_STANDARD =
+  '* PNG ou JPEG · Quadrado (1:1) · Mínimo 500×500px · Máximo 6MB · Fundo transparente recomendado';
+
+// ============================================================
+// FALLBACK — DEVE SER IDÊNTICO À EDGE FUNCTION validate-upload v8
 // Atualizar aqui SE mudar no backend (raro)
 // ============================================================
 const FALLBACK_RULES: Record<UploadType, UploadRule> = {
   logo: {
-    formats: ['image/png'],
-    format_labels: ['PNG'],
+    formats: ['image/png', 'image/jpeg'],
+    format_labels: ['PNG', 'JPEG'],
     aspect_ratio: 1,
     aspect_tolerance: 0.05,
     min_width: 500,
     min_height: 500,
-    max_size_mb: 5,
-    description: 'Logo da fábrica — PNG quadrado, mínimo 500×500px, máximo 5MB',
+    max_size_mb: 6,
+    description: UPLOAD_HINT_STANDARD,
     error_messages: {
-      invalid_format: 'Use arquivo PNG para o logo.',
-      too_large: 'Logo muito grande. Máximo: 5MB.',
+      invalid_format: 'Use arquivo PNG ou JPEG para o logo.',
+      too_large: 'Logo muito grande. Máximo: 6MB.',
       too_small: 'Resolução muito baixa. Mínimo: 500×500px.',
       wrong_ratio: 'O logo deve ser quadrado (proporção 1:1).',
     },
   },
   'brand-logo': {
-    formats: ['image/png'],
-    format_labels: ['PNG'],
+    formats: ['image/png', 'image/jpeg'],
+    format_labels: ['PNG', 'JPEG'],
     aspect_ratio: 1,
     aspect_tolerance: 0.05,
     min_width: 500,
     min_height: 500,
-    max_size_mb: 5,
-    description: 'Logo da loja — PNG quadrado, mínimo 500×500px, máximo 5MB',
+    max_size_mb: 6,
+    description: UPLOAD_HINT_STANDARD,
     error_messages: {
-      invalid_format: 'Use arquivo PNG para o logo da loja.',
-      too_large: 'Logo muito grande. Máximo: 5MB.',
+      invalid_format: 'Use arquivo PNG ou JPEG para o logo da loja.',
+      too_large: 'Logo muito grande. Máximo: 6MB.',
       too_small: 'Resolução muito baixa. Mínimo: 500×500px.',
       wrong_ratio: 'O logo deve ser quadrado (proporção 1:1).',
     },
@@ -76,16 +83,17 @@ const FALLBACK_RULES: Record<UploadType, UploadRule> = {
   product: {
     formats: ['image/png', 'image/jpeg'],
     format_labels: ['PNG', 'JPEG'],
-    // Sem restrição de aspect_ratio — produtos podem ser retangulares
-    min_width: 800,
-    min_height: 800,
-    max_size_mb: 10,
-    description: 'Foto do produto — PNG ou JPEG, mínimo 800×800px, máximo 10MB. Quadrado recomendado.',
+    aspect_ratio: 1,
+    aspect_tolerance: 0.05,
+    min_width: 500,
+    min_height: 500,
+    max_size_mb: 6,
+    description: UPLOAD_HINT_STANDARD,
     error_messages: {
       invalid_format: 'Use arquivo PNG ou JPEG para a foto do produto.',
-      too_large: 'Arquivo muito grande. Máximo: 10MB.',
-      too_small: 'Resolução muito baixa. Mínimo: 800×800px.',
-      wrong_ratio: '',
+      too_large: 'Arquivo muito grande. Máximo: 6MB.',
+      too_small: 'Resolução muito baixa. Mínimo: 500×500px.',
+      wrong_ratio: 'A imagem do produto deve ser quadrada (proporção 1:1).',
     },
   },
   template: {
@@ -265,8 +273,9 @@ export function getAcceptString(type: UploadType): string {
 
 /**
  * Texto de ajuda para exibir abaixo do input de upload.
- * Ex: "Logo da fábrica — PNG quadrado, mínimo 500×500px, máximo 5MB"
+ * Para logo, brand-logo e product retorna o texto padrão v8.
  */
 export function getUploadHint(type: UploadType): string {
-  return getUploadRule(type).description;
+  if (type === 'template') return getUploadRule(type).description;
+  return UPLOAD_HINT_STANDARD;
 }

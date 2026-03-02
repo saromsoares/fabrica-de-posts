@@ -8,7 +8,7 @@ import {
   Sparkles, LayoutDashboard, Palette, Package,
   Image as ImageIcon, User, LogOut, Shield,
   Menu, X, Factory, Store, Grid3X3, FolderOpen,
-  LayoutTemplate, Settings, ChevronRight,
+  LayoutTemplate, Settings, ChevronRight, Crown, Zap, Users,
 } from 'lucide-react';
 import type { Profile } from '@/types/database';
 import { isAdminRole } from '@/lib/role-helpers';
@@ -37,8 +37,9 @@ const lojistaNav: NavItem[] = [
 const fabricanteNav: NavItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
   { href: '/dashboard/fabricante/produtos', icon: Package, label: 'Produtos', exact: false },
-  { href: '/dashboard/fabricante/categorias', icon: FolderOpen, label: 'Categorias', exact: false },
   { href: '/dashboard/fabricante/templates', icon: LayoutTemplate, label: 'Templates', exact: true },
+  { href: '/dashboard/fabricante/categorias', icon: FolderOpen, label: 'Categorias', exact: false },
+  { href: '/dashboard/fabricante/solicitacoes', icon: Users, label: 'Solicitações', exact: true },
   { href: '/dashboard/fabricante/perfil', icon: Settings, label: 'Perfil da Fábrica', exact: true },
   { href: '/dashboard/conta', icon: User, label: 'Conta', exact: true },
 ];
@@ -76,7 +77,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => { cancelled = true; };
   }, [supabase]);
 
-  // Close sidebar on route change
+  // Close sidebar on route change — setState in effect is intentional here (syncing sidebar with route)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setSidebarOpen(false); }, [pathname]);
 
   const handleLogout = async () => {
@@ -165,7 +167,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Sparkles size={16} className="text-white" />
               </div>
               <span className="font-display font-800 text-[15px] tracking-tight">
-                Fábrica de <span className="text-brand-400">Posts</span>
+                Criativo <span className="text-brand-400">Pronto</span>
               </span>
             </Link>
             <button
@@ -186,10 +188,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <p className="text-sm font-700 text-white truncate leading-tight">
                     {profile.full_name || 'Usuário'}
                   </p>
-                  <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[9px] font-800 uppercase tracking-wider border ${roleConfig.accent}`}>
-                    <roleConfig.icon size={8} />
-                    {testRole ? roleConfig.label : (isAdminRole(profile) ? 'Super Admin' : profile.role)}
-                  </span>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-800 uppercase tracking-wider border ${roleConfig.accent}`}>
+                      <roleConfig.icon size={8} />
+                      {testRole ? roleConfig.label : (isAdminRole(profile) ? 'Super Admin' : profile.role)}
+                    </span>
+                    {/* Badge do plano — visível apenas para lojistas */}
+                    {!isAdminRole(profile) && profile.role !== 'fabricante' && (() => {
+                      const plan = (profile as Profile & { plan?: string }).plan || 'free';
+                      const planDisplay: Record<string, { label: string; cls: string; icon: React.ElementType }> = {
+                        free: { label: 'Free', cls: 'bg-dark-800/60 border-dark-700/40 text-dark-400', icon: Sparkles },
+                        gratis: { label: 'Grátis', cls: 'bg-dark-800/60 border-dark-700/40 text-dark-400', icon: Sparkles },
+                        basico: { label: 'Básico', cls: 'bg-blue-900/50 border-blue-700/40 text-blue-300', icon: Zap },
+                        loja: { label: 'Loja', cls: 'bg-blue-900/50 border-blue-700/40 text-blue-300', icon: Zap },
+                        intermediario: { label: 'Intermediário', cls: 'bg-purple-900/50 border-purple-600/40 text-purple-300', icon: Crown },
+                        pro: { label: 'Pro', cls: 'bg-purple-900/50 border-purple-600/40 text-purple-300', icon: Crown },
+                        premium: { label: 'Premium', cls: 'bg-amber-900/50 border-amber-700/40 text-amber-300', icon: Crown },
+                        super_premium: { label: 'Super', cls: 'bg-gradient-to-r from-yellow-900/60 to-amber-900/60 border-yellow-600/40 text-yellow-200', icon: Crown },
+                      };
+                      const cfg = planDisplay[plan] ?? planDisplay.free;
+                      const PlanIcon = cfg.icon;
+                      return (
+                        <Link
+                          href="/planos"
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-800 uppercase tracking-wider border transition-opacity hover:opacity-80 ${cfg.cls}`}
+                          title="Ver planos"
+                        >
+                          <PlanIcon size={8} />
+                          {cfg.label}
+                        </Link>
+                      );
+                    })()}
+                  </div>
                 </div>
                 <NotificationBell />
               </div>
@@ -309,7 +339,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <Sparkles size={13} className="text-white" />
                 </div>
                 <span className="font-display font-800 text-sm tracking-tight">
-                  Fábrica de <span className="text-brand-400">Posts</span>
+                  Criativo <span className="text-brand-400">Pronto</span>
                 </span>
               </div>
             </div>

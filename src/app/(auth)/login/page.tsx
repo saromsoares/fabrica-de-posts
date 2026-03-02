@@ -71,7 +71,7 @@ export default function LoginPage() {
             <Sparkles size={18} className="text-white" />
           </div>
           <span className="font-display font-800 text-lg tracking-tight text-white">
-            Fábrica de <span className="text-brand-400">Posts</span>
+            Criativo <span className="text-brand-400">Pronto</span>
           </span>
         </div>
 
@@ -111,7 +111,7 @@ export default function LoginPage() {
         </div>
 
         {/* Bottom */}
-        <p className="text-dark-600 text-xs relative z-10">© 2025 Fábrica de Posts. Todos os direitos reservados.</p>
+        <p className="text-dark-600 text-xs relative z-10">© 2025 Criativo Pronto. Todos os direitos reservados.</p>
       </div>
 
       {/* Right panel — form */}
@@ -122,7 +122,7 @@ export default function LoginPage() {
             <Sparkles size={16} className="text-white" />
           </div>
           <span className="font-display font-800 text-base tracking-tight text-white">
-            Fábrica de <span className="text-brand-400">Posts</span>
+            Criativo <span className="text-brand-400">Pronto</span>
           </span>
         </div>
 

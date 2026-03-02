@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { Users, Check } from 'lucide-react';
-import { PLAN_LABELS } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
 

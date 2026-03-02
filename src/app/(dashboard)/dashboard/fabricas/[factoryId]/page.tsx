@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
-import { Loader2, ArrowLeft, FolderOpen, Factory as FactoryIcon } from 'lucide-react';
+import { Loader2, ArrowLeft, FolderOpen } from 'lucide-react';
 import LogoAvatar from '@/components/ui/LogoAvatar';
 import type { Factory, Category, Sector } from '@/types/database';
 

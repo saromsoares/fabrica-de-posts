@@ -14,7 +14,6 @@ import {
   getUploadHint,
   getAcceptString,
   invalidateUploadRulesCache,
-  type UploadType,
 } from '../upload-validator';
 
 // ── Helpers para criar File mocks ──────────────────────────────

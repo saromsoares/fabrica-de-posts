@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Teste de Divergência — plan-limits
  *

@@ -173,7 +173,7 @@ export function useAuthenticatedFunction<T = unknown>(
     return () => {
       cancelledRef.current = true;
     };
-  }, [invoke, options?.autoFetch, options?.enabled]);
+  }, [invoke, options?.autoFetch, options?.enabled, functionName]);
 
   return { data, loading, error, invoke, setData };
 }

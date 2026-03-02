@@ -1,14 +1,18 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { invokeWithAuth } from '@/hooks/useAuthenticatedFunction';
 import {
   Sparkles, ChevronRight, Check, Download, Copy,
-  RefreshCw, AlertTriangle, ArrowLeft, Loader2,
+  AlertTriangle, ArrowLeft, Loader2,
   ImageIcon, Wand2, Flame, Gem, Zap, PenLine,
 } from 'lucide-react';
 import ShareButtons from '@/components/ShareButtons';
+import GeneratingOverlay from '@/components/ui/GeneratingOverlay';
+import CopyFallbackModal from '@/components/ui/CopyFallbackModal';
+import { copyToClipboard } from '@/lib/clipboard';
 import type { Template, BrandKit, UsageInfo } from '@/types/database';
 
 /* ═══════════════════════════════════════════════════════
@@ -317,19 +321,30 @@ export default function AIGenerationMode({
     setCaptionSaved(true);
   };
 
+  /* ── Copy fallback state ── */
+  const [fallbackText, setFallbackText] = useState<string | null>(null);
+
   /* ── Copy specific caption ── */
-  const handleCopyCaption = (text: string, hashtags: string, index: number) => {
+  const handleCopyCaption = async (text: string, hashtags: string, index: number) => {
     const fullText = `${text}${hashtags ? '\n\n' + hashtags : ''}`;
-    navigator.clipboard.writeText(fullText);
-    setCopiedIndex(index);
-    setTimeout(() => setCopiedIndex(null), 2000);
+    const ok = await copyToClipboard(fullText);
+    if (ok) {
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } else {
+      setFallbackText(fullText);
+    }
   };
 
   /* ── Copy edited caption ── */
-  const handleCopyEdited = () => {
-    navigator.clipboard.writeText(editedCaption);
-    setCopiedIndex(-1);
-    setTimeout(() => setCopiedIndex(null), 2000);
+  const handleCopyEdited = async () => {
+    const ok = await copyToClipboard(editedCaption);
+    if (ok) {
+      setCopiedIndex(-1);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } else {
+      setFallbackText(editedCaption);
+    }
   };
 
   /* ── Download image ── */
@@ -397,6 +412,11 @@ export default function AIGenerationMode({
      RENDER
      ═══════════════════════════════════════════════════════ */
   return (
+    <>
+    <GeneratingOverlay visible={generating} />
+    {fallbackText && (
+      <CopyFallbackModal text={fallbackText} onClose={() => setFallbackText(null)} />
+    )}
     <div className="space-y-6 animate-fade-in-up">
 
       {/* ── Usage warning ── */}
@@ -949,5 +969,6 @@ export default function AIGenerationMode({
         </div>
       )}
     </div>
+    </>
   );
 }

@@ -1,4 +1,4 @@
-# 🏭 Fábrica de Posts — Plataforma de Artes Automáticas
+# 🏭 Criativo Pronto — Plataforma de Artes Automáticas
 
 Plataforma SaaS onde revendedores e lojas geram posts profissionais em minutos. Marketing pronto sem designer, padronizado, rápido e com alta recorrência de uso.
 

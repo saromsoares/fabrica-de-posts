@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * middleware-rules.test.ts
  * Testes dos helpers puros de route-rules.ts.

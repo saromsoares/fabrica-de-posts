@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase-browser';
 import { isFabricanteRole } from '@/lib/role-helpers';
 import {
   Loader2, Plus, Pencil, Trash2, FolderOpen, X, Check,
-  Package, AlertCircle, CheckCircle, AlertTriangle, SmilePlus,
+  Package, AlertCircle, CheckCircle, AlertTriangle,
 } from 'lucide-react';
 import type { Category, Factory, Profile } from '@/types/database';
 import { createLogger } from '@/lib/logger';
@@ -29,7 +29,7 @@ export default function FabricanteCategoriesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formName, setFormName] = useState('');
-  const [formIcon, setFormIcon] = useState('');
+  const [_formIcon, setFormIcon] = useState('');
   const [saving, setSaving] = useState(false);
 
   // Feedback

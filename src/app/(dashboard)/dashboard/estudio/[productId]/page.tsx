@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
@@ -15,7 +16,6 @@ import { extractDominantColor } from '@/lib/image-processing';
 import { getFontById, loadFont } from '@/lib/fonts';
 import AIGenerationMode from '@/components/studio/AIGenerationMode';
 import { createLogger } from '@/lib/logger';
-import { handleApiError } from '@/lib/api-errors';
 
 const log = createLogger('Estudio');
 
@@ -454,6 +454,14 @@ export default function EstudioPage() {
   const [step, setStep] = useState(1);
   const [templateFilter, setTemplateFilter] = useState<'all' | 'feed' | 'story'>('all');
   const [generating, setGenerating] = useState(false);
+  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+  const LOADING_MESSAGES = [
+    '⚙️ Montando a composição...',
+    '🎨 Aplicando sua marca...',
+    '✨ Renderizando a arte...',
+    '📝 Gerando a legenda...',
+    '🚀 Finalizando o post...',
+  ];
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [caption, setCaption] = useState<{ short: string; medium: string } | null>(null);
   const [aiCaption, setAiCaption] = useState<string | null>(null);
@@ -585,9 +593,14 @@ export default function EstudioPage() {
   const handleGenerateAll = async () => {
     if (!exportRef.current || !userId || isOverLimit) return;
     setGenerating(true);
+    setLoadingMsgIdx(0);
+    const msgInterval = setInterval(() => {
+      setLoadingMsgIdx(prev => (prev + 1) % 5);
+    }, 900);
     try {
       const { data: usageResult } = await supabase.rpc('increment_usage', { p_user_id: userId });
       if (usageResult && !usageResult.allowed) {
+        clearInterval(msgInterval);
         setUsage(usageResult as UsageInfo);
         setGenerating(false);
         return;
@@ -667,6 +680,7 @@ export default function EstudioPage() {
     } catch (err) {
       log.error('Generation failed', { error: err instanceof Error ? err.message : String(err) });
     } finally {
+      clearInterval(msgInterval);
       setGenerating(false);
     }
   };
@@ -682,9 +696,38 @@ export default function EstudioPage() {
   };
 
   const handleCopyCaption = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedCaption(true);
-    setTimeout(() => setCopiedCaption(false), 2000);
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopiedCaption(true);
+        setTimeout(() => setCopiedCaption(false), 2000);
+      }).catch(() => {
+        // Fallback para contextos sem permissão
+        const el = document.createElement('textarea');
+        el.value = text;
+        el.style.position = 'fixed';
+        el.style.opacity = '0';
+        document.body.appendChild(el);
+        el.focus();
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        setCopiedCaption(true);
+        setTimeout(() => setCopiedCaption(false), 2000);
+      });
+    } else {
+      // Fallback para HTTP ou navegadores antigos
+      const el = document.createElement('textarea');
+      el.value = text;
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.focus();
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setCopiedCaption(true);
+      setTimeout(() => setCopiedCaption(false), 2000);
+    }
   };
 
   const handleSaveCaption = async () => {
@@ -1056,6 +1099,19 @@ export default function EstudioPage() {
 
   return (
     <div className="animate-fade-in-up">
+      {/* OVERLAY DE LOADING GLOBAL */}
+      {generating && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ background: 'rgba(6,6,10,0.88)', backdropFilter: 'blur(8px)' }}>
+          <div className="w-16 h-16 border-4 border-brand-600/30 border-t-brand-500 rounded-full animate-spin mb-6" />
+          <div className="text-lg font-semibold text-white mb-2">{LOADING_MESSAGES[loadingMsgIdx]}</div>
+          <div className="text-sm text-dark-400">Sua arte profissional está sendo criada...</div>
+          <div className="mt-6 flex gap-1.5">
+            {LOADING_MESSAGES.map((_m, i) => (
+              <div key={i} className="w-1.5 h-1.5 rounded-full transition-all" style={{ background: i === loadingMsgIdx ? '#ff6b35' : '#333' }} />
+            ))}
+          </div>
+        </div>
+      )}
       {/* ══════ OFFSCREEN EXPORT NODE ══════
           Nó dedicado em tamanho EXATO (1080×1080 ou 1080×1920).
           ARQUITETURA DE CAMADAS:
@@ -1141,7 +1197,7 @@ export default function EstudioPage() {
         <p className="text-xs text-dark-600 mt-2">
           {generationMode === 'visual'
             ? 'Preview instantâneo — você personaliza e exporta a arte localmente.'
-            : 'GPT-4o + DALL-E 3 — a IA gera imagem e legenda com base no template escolhido.'}
+            : 'IA avançada — gera imagem e legenda profissional com base no template escolhido.'}
         </p>
       </div>
 
@@ -1220,7 +1276,7 @@ export default function EstudioPage() {
                 {VISUAL_TEMPLATES.filter(t => templateFilter === 'all' || t.format === templateFilter).map((t) => {
                   const isStory = t.format === 'story';
                   const miniW = 160;
-                  const miniH = isStory ? Math.round(miniW * (1920 / 1080)) : miniW;
+                  const _miniH = isStory ? Math.round(miniW * (1920 / 1080)) : miniW;
                   const miniScale = miniW / 1080;
                   const tIsLight = t.id === 'minimalista-premium' || t.id === 'institucional-clean';
                   return (

@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, Suspense } from 'react';
 import { createClient } from '@/lib/supabase-browser';
@@ -9,12 +10,55 @@ import {
   CheckCircle2, Clock, AlertCircle, Target, Users,
   Megaphone, Eye, Palette, MapPin, Instagram,
   MessageSquare, Building2, ShoppingBag, Wrench,
-  Package, LayoutGrid,
+  Package, LayoutGrid, HelpCircle, Star, Flame,
 } from 'lucide-react';
 import { FileUpload } from '@/components/ui/FileUpload';
 import type { Profile, Factory as FactoryType, Sector } from '@/types/database';
 
 // ─── helpers ──────────────────────────────────────────────────
+
+function Tooltip({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="relative inline-block">
+      <button
+        type="button"
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        onClick={() => setShow(!show)}
+        className="ml-1.5 text-dark-500 hover:text-dark-300 transition-colors"
+        aria-label="Ajuda"
+      >
+        <HelpCircle size={14} />
+      </button>
+      {show && (
+        <span className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 px-3 py-2 bg-dark-800 border border-dark-700 rounded-xl text-xs text-dark-200 leading-relaxed shadow-xl">
+          {text}
+          <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-dark-800" />
+        </span>
+      )}
+    </span>
+  );
+}
+
+function FactoryBadge({ badge }: { badge: string | null }) {
+  if (badge === 'destaque') return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-500/15 border border-yellow-500/30 text-yellow-400 text-[10px] font-700 rounded-full">
+      <Star size={10} className="fill-yellow-400" /> Destaque
+    </span>
+  );
+  if (badge === 'popular') return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[10px] font-700 rounded-full">
+      <Flame size={10} /> Popular
+    </span>
+  );
+  if (badge === 'novo') return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-dark-700/50 border border-dark-600/30 text-dark-300 text-[10px] font-700 rounded-full">
+      Novo
+    </span>
+  );
+  return null;
+}
 
 const UF_LIST = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
@@ -130,18 +174,20 @@ function OnboardingPage() {
         </p>
       </div>
 
-      {/* Role badge */}
+      {/* Role badge with tooltip */}
       <div className="flex justify-center mb-8">
         <div className="flex items-center gap-2 px-4 py-2 bg-dark-900/80 border border-dark-800/50 rounded-full">
           {(forceRole === 'fabricante' || profile.role === 'fabricante') ? (
             <>
               <Factory size={14} className="text-blue-400" />
               <span className="text-xs font-700 text-blue-400 uppercase tracking-wider">Fabricante</span>
+              <Tooltip text="Você é fabricante ou distribuidor e quer disponibilizar seu catálogo para lojistas gerarem conteúdo profissional com sua marca." />
             </>
           ) : (
             <>
               <Store size={14} className="text-brand-400" />
               <span className="text-xs font-700 text-brand-400 uppercase tracking-wider">Lojista</span>
+              <Tooltip text="Você tem uma loja e quer gerar posts para suas redes sociais usando produtos de fabricantes parceiros." />
             </>
           )}
         </div>
@@ -290,6 +336,12 @@ function FabricanteWizard({
             <Factory size={20} className="text-blue-400" />
             Identidade da Fábrica
           </h2>
+          <div className="flex items-start gap-3 px-4 py-3 bg-blue-600/5 border border-blue-500/15 rounded-xl">
+            <Target size={16} className="text-blue-400 mt-0.5 shrink-0" />
+            <p className="text-xs text-dark-300 leading-relaxed">
+              <strong className="text-blue-400">Fabricante</strong> — Você cadastra seus produtos e templates. Os lojistas parceiros usam seu catálogo para gerar artes profissionais com a marca deles. Mais visibilidade e recompra para sua fábrica.
+            </p>
+          </div>
 
           <div>
             <label className="block text-xs font-700 text-dark-400 uppercase tracking-wider mb-2">Nome da Fábrica *</label>
@@ -579,7 +631,7 @@ function LojistaWizard({
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [factories, setFactories] = useState<FactoryWithFollowInfo[]>([]);
   const [expandedSector, setExpandedSector] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [_uploading, _setUploading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -595,6 +647,7 @@ function LojistaWizard({
     setData((prev) => ({ ...prev, [k]: v }));
 
   const hasFollowed = factories.some((f) => f.follow_status === 'pending' || f.follow_status === 'approved');
+  const [skippedFactories, setSkippedFactories] = useState(false);
 
   // Load sectors + factories
   useEffect(() => {
@@ -695,7 +748,7 @@ function LojistaWizard({
     () => data.storeName.trim().length > 0,
     () => true,
     () => true,
-    () => hasFollowed,
+    () => hasFollowed || skippedFactories,
   ];
 
   return (
@@ -709,6 +762,12 @@ function LojistaWizard({
             <Store size={20} className="text-brand-400" />
             Sua Loja
           </h2>
+          <div className="flex items-start gap-3 px-4 py-3 bg-brand-600/5 border border-brand-500/15 rounded-xl">
+            <Target size={16} className="text-brand-400 mt-0.5 shrink-0" />
+            <p className="text-xs text-dark-300 leading-relaxed">
+              <strong className="text-brand-400">Lojista</strong> — Você acessa o catálogo de produtos das fábricas parceiras, escolhe templates profissionais e gera artes prontas para suas redes sociais. Ideal para quem vende e precisa de conteúdo rápido.
+            </p>
+          </div>
 
           <div>
             <label className="block text-xs font-700 text-dark-400 uppercase tracking-wider mb-2">Nome da Loja *</label>
@@ -801,7 +860,12 @@ function LojistaWizard({
                 <input
                   type="text"
                   value={data.primaryColor}
-                  onChange={(e) => set('primaryColor', e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === '' || /^#[0-9A-Fa-f]{0,6}$/.test(v)) set('primaryColor', v);
+                  }}
+                  placeholder="#e85d75"
+                  maxLength={7}
                   className="flex-1 px-3 py-2 bg-dark-950/50 border border-dark-800/50 rounded-xl text-white text-sm focus:outline-none focus:border-brand-500/50"
                 />
               </div>
@@ -818,7 +882,12 @@ function LojistaWizard({
                 <input
                   type="text"
                   value={data.secondaryColor}
-                  onChange={(e) => set('secondaryColor', e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === '' || /^#[0-9A-Fa-f]{0,6}$/.test(v)) set('secondaryColor', v);
+                  }}
+                  placeholder="#ffffff"
+                  maxLength={7}
                   className="flex-1 px-3 py-2 bg-dark-950/50 border border-dark-800/50 rounded-xl text-white text-sm focus:outline-none focus:border-brand-500/50"
                 />
               </div>
@@ -917,10 +986,10 @@ function LojistaWizard({
           </h2>
           <p className="text-dark-400 text-sm">Solicite acesso a pelo menos 1 fábrica para começar.</p>
 
-          {!hasFollowed && (
+          {!hasFollowed && !skippedFactories && (
             <div className="flex items-center gap-2 px-4 py-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-400 text-sm">
               <AlertCircle size={16} />
-              Solicite acesso a pelo menos 1 fábrica para continuar.
+              Solicite acesso a pelo menos 1 fábrica, ou clique em &ldquo;Explorar depois&rdquo;.
             </div>
           )}
 
@@ -960,7 +1029,19 @@ function LojistaWizard({
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-700 text-white truncate">{factory.name}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-700 text-white truncate">{factory.name}</p>
+                              <FactoryBadge badge={
+                                (factory as FactoryType & { product_count?: number }).product_count && (factory as FactoryType & { product_count?: number }).product_count! >= 10
+                                  ? 'destaque'
+                                  : (factory as FactoryType & { product_count?: number }).product_count && (factory as FactoryType & { product_count?: number }).product_count! >= 5
+                                    ? 'popular'
+                                    : 'novo'
+                              } />
+                            </div>
+                            {(factory as FactoryType).description && (
+                              <p className="text-xs text-dark-500 truncate mt-0.5">{(factory as FactoryType).description}</p>
+                            )}
                           </div>
                           {factory.follow_status === null && (
                             <button
@@ -1017,29 +1098,55 @@ function LojistaWizard({
           </button>
         ) : <div />}
 
-        {step < 3 ? (
-          <button
-            type="button"
-            onClick={() => {
-              if (canNext[step]()) { setError(null); setStep((s) => s + 1); }
-              else setError('Preencha os campos obrigatórios.');
-            }}
-            className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-700 rounded-xl transition-all text-sm"
-          >
-            Próximo
-            <ArrowRight size={16} />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleComplete}
-            disabled={saving || !hasFollowed}
-            className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-700 rounded-xl transition-all disabled:opacity-50 text-sm"
-          >
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-            Concluir
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {/* Botão Configurar mais tarde — visível nos steps opcionais (1=Brand Kit, 2=Estilo) */}
+          {(step === 1 || step === 2) && (
+            <button
+              type="button"
+              onClick={() => { setError(null); setStep((s) => s + 1); }}
+              className="flex items-center gap-1.5 px-4 py-2.5 text-dark-400 hover:text-white text-sm font-500 transition-all"
+            >
+              Configurar mais tarde
+              <ArrowRight size={14} />
+            </button>
+          )}
+
+          {/* Botão Explorar depois — visível no step de fábricas (3) */}
+          {step === 3 && !hasFollowed && (
+            <button
+              type="button"
+              onClick={() => { setSkippedFactories(true); setError(null); }}
+              className="flex items-center gap-1.5 px-4 py-2.5 text-dark-400 hover:text-white text-sm font-500 transition-all"
+            >
+              Explorar depois
+              <ArrowRight size={14} />
+            </button>
+          )}
+
+          {step < 3 ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (canNext[step]()) { setError(null); setStep((s) => s + 1); }
+                else setError('Preencha os campos obrigatórios.');
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-700 rounded-xl transition-all text-sm"
+            >
+              Próximo
+              <ArrowRight size={16} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleComplete}
+              disabled={saving || (!hasFollowed && !skippedFactories)}
+              className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-700 rounded-xl transition-all disabled:opacity-50 text-sm"
+            >
+              {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+              Concluir
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

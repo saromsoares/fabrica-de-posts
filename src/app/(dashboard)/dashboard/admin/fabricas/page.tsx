@@ -1,13 +1,13 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import {
-  Plus, Pencil, Trash2, X, Upload, AlertCircle, Factory,
+  Plus, Pencil, Trash2, X, AlertCircle, Factory,
   ChevronRight, ChevronLeft, Check, Globe, Phone, Sparkles,
   Users, Target, Megaphone, Building2
 } from 'lucide-react';
-import LogoAvatar from '@/components/ui/LogoAvatar';
 import { FileUpload } from '@/components/ui/FileUpload';
 import { extractError } from '@/lib/utils';
 
@@ -599,12 +599,12 @@ export default function AdminFabricasPage() {
           {factories.map((f) => (
             <div key={f.id} className="bg-dark-900/60 border border-dark-800/40 rounded-2xl p-5 hover:border-dark-700/60 transition-all">
               <div className="flex items-center gap-4 mb-4">
-                {/* Logo com fundo branco */}
-                <div className="w-14 h-14 rounded-xl bg-dark-800/60 border border-dark-700/40 flex items-center justify-center overflow-hidden flex-shrink-0">
+                {/* Logo com fundo branco — garante legibilidade de logos transparentes */}
+                <div className="w-14 h-14 rounded-xl bg-white border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0 p-1">
                   {f.logo_url ? (
                     <img src={f.logo_url} alt={f.name} className="w-full h-full object-contain" />
                   ) : (
-                    <Factory size={22} className="text-dark-500" />
+                    <Factory size={22} className="text-gray-400" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
