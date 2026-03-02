@@ -288,6 +288,14 @@ function FabricanteWizard({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setError('Sessão expirada.'); return; }
 
+      // 1) Garantir que o perfil tenha role='fabricante' ANTES do INSERT
+      //    A RLS policy can_create_factory() exige role IN ('fabricante','admin','super_admin')
+      const { error: roleError } = await supabase.from('profiles')
+        .update({ role: 'fabricante', updated_at: new Date().toISOString() })
+        .eq('id', userId);
+      if (roleError) throw roleError;
+
+      // 2) Agora sim inserir a fábrica (RLS vai permitir)
       const { error: factoryError } = await supabase.from('factories').insert({
         name: data.name.trim(),
         user_id: userId,
@@ -304,6 +312,7 @@ function FabricanteWizard({
       });
       if (factoryError) throw factoryError;
 
+      // 3) Marcar onboarding como completo
       await supabase.from('profiles')
         .update({ onboarding_complete: true, updated_at: new Date().toISOString() })
         .eq('id', userId);
