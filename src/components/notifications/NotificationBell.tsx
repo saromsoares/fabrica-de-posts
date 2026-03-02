@@ -193,7 +193,7 @@ export default function NotificationBell() {
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute right-0 top-12 w-80 sm:w-96 bg-dark-900 border border-dark-800 rounded-2xl shadow-2xl z-50 overflow-hidden">
+        <div className="absolute right-0 top-12 w-80 sm:w-96 min-w-[320px] bg-dark-900 border border-dark-800 rounded-2xl shadow-2xl z-50 overflow-hidden" style={{ maxWidth: 'calc(100vw - 1rem)' }}>
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-dark-800">
             <h3 className="font-700 text-sm">Notificações</h3>
@@ -234,11 +234,11 @@ export default function NotificationBell() {
                   <span className="text-lg mt-0.5 flex-shrink-0">
                     {NOTIFICATION_ICONS[notif.type] || '🔔'}
                   </span>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm ${!notif.read ? 'font-700 text-white' : 'text-dark-300'}`}>
+                  <div className="flex-1 min-w-0 break-words">
+                    <p className={`text-sm ${!notif.read ? 'font-700 text-white' : 'text-dark-300'} break-words overflow-wrap break-word`}>
                       {notif.title}
                     </p>
-                    <p className="text-xs text-dark-500 mt-0.5 line-clamp-2">{notif.body}</p>
+                    <p className="text-xs text-dark-500 mt-0.5 line-clamp-2 break-words overflow-wrap break-word">{notif.body}</p>
                     <span className="text-[10px] text-dark-600 mt-1 block">{timeAgo(notif.created_at)}</span>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">

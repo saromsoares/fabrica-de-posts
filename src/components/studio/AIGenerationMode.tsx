@@ -171,6 +171,7 @@ export default function AIGenerationMode({
         .from('templates')
         .select('id, name, format, preview_url, config_json')
         .eq('active', true)
+        .is('factory_id', null)
         .order('name'),
       supabase
         .from('products')
